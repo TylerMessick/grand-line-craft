@@ -62,6 +62,10 @@ public final class PirateHud {
         int sx = x + 6 * 27 + 4;
         if (f.forms().size() > 1) chip(g, font, sx, chipY, "V", ClientState.cooldownPct[6], false, !ClientState.form.equals(f.forms().get(0).id()), color);
         if (f.hasToggle()) chip(g, font, sx + 27, chipY, "B", ClientState.cooldownPct[7], false, ClientState.toggle, color);
+        if (ClientState.pages > 1) {
+            Component pg = Component.literal("U " + (ClientState.page + 1) + "/" + ClientState.pages);
+            g.drawString(font, pg, x + 164 - font.width(pg), chipY + 19, 0xFFBBBBBB, true);
+        }
 
         // move list at the left edge
         g.pose().pushPose();
@@ -78,6 +82,7 @@ public final class PirateHud {
         }
         if (f.forms().size() > 1) g.drawString(font, Component.literal("[V] ").append(Component.translatable("hud.grandline.shift")), 6, ly + 6 * 11 + 4, 0xFFBBBBBB, true);
         if (f.hasToggle()) g.drawString(font, Component.literal("[B] ").append(Component.translatable("toggle.grandline." + f.toggle())), 6, ly + 7 * 11 + 4, 0xFFBBBBBB, true);
+        if (ClientState.pages > 1) g.drawString(font, Component.literal("[U] ").append(Component.translatable("hud.grandline.page", ClientState.page + 1, ClientState.pages)), 6, ly + 8 * 11 + 4, 0xFFBBBBBB, true);
         g.pose().popPose();
     }
 

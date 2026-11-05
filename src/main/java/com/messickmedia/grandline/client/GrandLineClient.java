@@ -40,7 +40,7 @@ public class GrandLineClient {
     public static final KeyMapping[] KEYS = {
             key("move1", GLFW.GLFW_KEY_Z), key("move2", GLFW.GLFW_KEY_R), key("move3", GLFW.GLFW_KEY_G),
             key("move4", GLFW.GLFW_KEY_H), key("move5", GLFW.GLFW_KEY_J), key("move6", GLFW.GLFW_KEY_Y),
-            key("form", GLFW.GLFW_KEY_V), key("toggle", GLFW.GLFW_KEY_B)};
+            key("form", GLFW.GLFW_KEY_V), key("toggle", GLFW.GLFW_KEY_B), key("page", GLFW.GLFW_KEY_U)};
 
     private static final ResourceLocation DRAGON_TEX = GrandLine.id("textures/entity/seiryu_dragon.png");
     private static DragonModel dragon;
@@ -64,6 +64,7 @@ public class GrandLineClient {
         ModNetwork.ClientSink.sync = ClientState::accept;
         ModNetwork.ClientSink.form = ClientState::accept;
         ModNetwork.ClientSink.fx = FxClient::handle;
+        ModNetwork.ClientSink.stretch = FxClient::stretch;
     }
 
     static void keys(RegisterKeyMappingsEvent e) {

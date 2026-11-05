@@ -125,7 +125,7 @@ public final class Pika {
             laser(c, c.hand(), c.look(), 64, c.dmg(16), 0.3, 2.2);
             return true;
         });
-        Moves.register("flash", c -> {
+        Moves.register("amaterasu", c -> {
             ServerLevel l = c.level();
             Vec3 at = c.pos().add(0, 1.2, 0);
             Vfx.sphere(l, Fx.LIGHT, at, 3.0, 10);
@@ -167,6 +167,131 @@ public final class Pika {
                 Vec3 right = new Vec3(-look.z, 0, look.x).normalize();
                 Vec3 dir = look.add(right.scale(a)).normalize();
                 laser(c, p.getEyePosition().add(right.scale(a * 3)).add(0, -0.3, 0), dir, 64, c.dmg(12), 0.22, 1.8);
+            });
+            return true;
+        });
+        Moves.register("light_acceleration", c -> {
+            // every blow connects at the speed of light for a while: melee hits burst into light
+            c.s().accelTicks = 400;
+            Gx.effect(c.p(), MobEffects.MOVEMENT_SPEED, 400, 1);
+            Vfx.sphere(c.level(), Fx.LIGHT, c.pos().add(0, 1, 0), 1.3, 8);
+            Vfx.ring(c.level(), Fx.LIGHT, c.pos().add(0, 1, 0), 2.0, true);
+            Gx.sound(c.level(), c.pos(), SoundEvents.BEACON_POWER_SELECT, 1.0F, 1.6F);
+            return true;
+        });
+        Moves.register("laser_kick", c -> {
+            // the leg becomes a laser: a dash, then a beam fired from the sole of the foot
+            ServerPlayer p = c.p();
+            ServerLevel l = c.level();
+            LivingEntity t = Gx.aimAssist(p, 16);
+            Vec3 to = t != null ? Gx.chest(t) : Gx.lookPoint(p, 12);
+            Vec3 d = to.subtract(p.position().add(0, 1, 0));
+            Gx.teleport(p, to.subtract(d.normalize().scale(2.0)).subtract(0, 0.9, 0));
+            Vfx.beam(l, Fx.LIGHT, p.position().add(0, 0.9, 0).subtract(d.normalize().scale(d.length())), p.position().add(0, 0.9, 0), 0.2, 6);
+            Scheduler.schedule(2, () -> { if (p.isAlive()) laser(c, p.position().add(0, 0.6, 0), p.getLookAngle(), 40, c.dmg(22), 0.45, 3.0); });
+            return true;
+        });
+        Moves.register("finger_lasers", c -> {
+            // piercing needle beams from the fingertips, one after another
+            ServerPlayer p = c.p();
+            Scheduler.repeat(5, 2, i -> {
+                if (!p.isAlive()) return;
+                Vec3 from = c.hand().add(c.right().scale((i - 2) * 0.08));
+                Vec3 dir = p.getLookAngle().add(Vfx.randDir(c.level()).scale(0.02)).normalize();
+                Vec3 to = Gx.rayEnd(c.level(), from, dir, 48, p);
+                Vfx.beam(c.level(), Fx.LIGHT, from, to, 0.08, 6);
+                for (LivingEntity e : Gx.line(c.level(), from, to, 0.4, p)) { Gx.hurtNow(e, p, c.dmg(5)); e.igniteForSeconds(2); }
+                Vfx.impact(c.level(), Fx.LIGHT, to);
+                Gx.sound(c.level(), from, SoundEvents.FIREWORK_ROCKET_LAUNCH, 0.5F, 2.0F);
+            });
+            return true;
+        });
+        Moves.register("light_clones", c -> {
+            // Yasakani no Magatama, the other way: the light particles take the user's own shape and fight beside them
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            for (int i = 0; i < 2; i++) {
+                Vec3 at = p.position().add(c.right().scale(i == 0 ? 2.2 : -2.2));
+                FruitProjectile.fire(l, p, Kind.LIGHT_CLONE, c.dmg(4), at, p.getLookAngle(), 0.0F).life(300);
+                Vfx.sphere(l, Fx.LIGHT, at.add(0, 1, 0), 1.2, 8);
+            }
+            Gx.sound(l, p.position(), SoundEvents.BEACON_ACTIVATE, 1.0F, 1.8F);
+            return true;
+        });
+        Moves.register("eye_laser", c -> {
+            ServerPlayer p = c.p();
+            for (int k = -1; k <= 1; k += 2) {
+                Vec3 from = p.getEyePosition().add(c.right().scale(k * 0.12));
+                Vec3 to = Gx.rayEnd(c.level(), from, p.getLookAngle(), 40, p);
+                Vfx.beam(c.level(), Fx.LIGHT, from, to, 0.1, 6);
+                for (LivingEntity e : Gx.line(c.level(), from, to, 0.5, p)) { Gx.hurtNow(e, p, c.dmg(8)); e.igniteForSeconds(3); }
+                Vfx.impact(c.level(), Fx.LIGHT, to);
+            }
+            Gx.sound(c.level(), p.position(), SoundEvents.BEACON_POWER_SELECT, 0.8F, 2.0F);
+            return true;
+        });
+        Moves.register("light_hover", c -> {
+            // light weighs nothing: the body hangs in the air for a moment
+            ServerPlayer p = c.p();
+            p.setDeltaMovement(p.getDeltaMovement().multiply(0.2, 0, 0.2).add(0, 0.25, 0));
+            p.hurtMarked = true;
+            p.resetFallDistance();
+            Gx.effect(p, MobEffects.SLOW_FALLING, 80, 0);
+            Vfx.ring(c.level(), Fx.LIGHT, p.position().add(0, 0.1, 0), 1.2, false);
+            return true;
+        });
+        Moves.register("ama_no_iwato", c -> {
+            // the heavenly cave: a colossal beam from both feet
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            p.setDeltaMovement(p.getDeltaMovement().add(0, 0.8, 0));
+            p.hurtMarked = true;
+            for (int t = 0; t < 16; t += 4) {
+                final double r = 0.8 + t * 0.15;
+                Scheduler.schedule(t, () -> { Vfx.sphere(l, Fx.LIGHT, p.position().add(0, 0.4, 0), r, 4); Vfx.dress(l, Fx.LIGHT, p.position(), 2.0, 2); });
+            }
+            Gx.sound(l, p.position(), SoundEvents.BEACON_ACTIVATE, 1.6F, 1.2F);
+            Scheduler.schedule(16, () -> {
+                if (!p.isAlive()) return;
+                Vec3 from = p.position().add(0, 0.4, 0);
+                Vec3 dir = p.getLookAngle();
+                Vec3 to = Gx.rayEnd(l, from, dir, 70, p);
+                Vfx.beam(l, Fx.LIGHT, from, to, 1.6, 16);
+                for (LivingEntity e : Gx.line(l, from, to, 2.2, p)) { Gx.hurtNow(e, p, c.dmg(60)); e.igniteForSeconds(8); Gx.knock(e, from, 2.0, 0.6); }
+                Vfx.sphere(l, Fx.LIGHT, to, 6, 14);
+                Vfx.ring(l, Fx.LIGHT, to, 9, false);
+                Vfx.blast(l, ModRegistries.LIGHT.get(), to, 5);
+                for (LivingEntity e : Gx.around(l, to, 8, p)) { Gx.hurtNow(e, p, c.dmg(40)); Gx.knock(e, to, 3.0, 1.0); }
+                Gx.scorch(l, to, 5.0, 8.0F);
+                Gx.crater(l, to, 4.0, 8.0F);
+                Gx.sound(l, to, SoundEvents.GENERIC_EXPLODE.value(), 2.0F, 0.6F);
+                Gx.sound(l, from, SoundEvents.BEACON_DEACTIVATE, 1.5F, 0.5F);
+            });
+            return true;
+        });
+        Moves.register("sanshu_no_jingi", c -> {
+            // the Three Sacred Treasures: Yasakani below launches everyone, Yata into the sky, Murakumo brings them down
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            Vec3 at = p.position();
+            Vfx.sphere(l, Fx.LIGHT, at.add(0, 0.2, 0), 2.5, 8);
+            Vfx.ring(l, Fx.LIGHT, at.add(0, 0.2, 0), 6, false);
+            for (int i = 0; i < 12; i++) FruitProjectile.fire(l, p, Kind.LIGHT_BULLET, c.dmg(5), at.add(0, 0.5, 0), Vfx.randDir(l).multiply(1, 0.3, 1).add(0, 0.9, 0), 2.5F).life(20);
+            for (LivingEntity e : Gx.around(l, at, 6, p)) { Gx.hurtNow(e, p, c.dmg(10)); e.setDeltaMovement(e.getDeltaMovement().add(0, 1.3, 0)); e.hurtMarked = true; }
+            Gx.sound(l, at, SoundEvents.FIREWORK_ROCKET_LAUNCH, 1.2F, 1.6F);
+            Scheduler.schedule(8, () -> { if (p.isAlive()) teleportTo(c, p.position().add(0, 7, 0)); });
+            Scheduler.schedule(14, () -> {
+                if (!p.isAlive()) return;
+                c.s().murakumoTicks = Math.max(c.s().murakumoTicks, 120);
+                Vec3 top = p.position();
+                Vec3 ground = Gx.ground(l, top);
+                Gx.teleport(p, ground);
+                p.resetFallDistance();
+                Vfx.beam(l, Fx.LIGHT, top.add(0, 1, 0), ground.add(0, 1, 0), 0.3, 8);
+                Vfx.arc(l, Fx.LIGHT, ground.add(0, 1, 0), p.getYRot(), 4, 360, 0.3, false, 12);
+                Vfx.slam(l, Fx.LIGHT, ground, 5);
+                for (LivingEntity e : Gx.around(l, ground, 6, p)) { Gx.hurtNow(e, p, c.dmg(24)); Gx.knock(e, ground, 2.0, 0.4); }
+                Gx.sound(l, ground, SoundEvents.GENERIC_EXPLODE.value(), 1.2F, 1.4F);
             });
             return true;
         });

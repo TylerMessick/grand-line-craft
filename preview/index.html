@@ -32,7 +32,16 @@ const scenes = [
   { id: 'gear4', label: 'Boundman', title: 'Gear Fourth: Boundman', desc: 'Inflated haki shell with flame markings over the torso and arms, haki fists, a ring of steam.' },
   { id: 'gear5', label: 'Gear Fifth', title: 'Gear Fifth', desc: 'White glow over the whole body and a wreath of clouds that drifts around the neck.' },
   { id: 'hybrid', label: 'Hybrid dragon', title: 'Seiryu hybrid', desc: 'Horns, shoulder scale plates, a mane of spines down the back and a swaying tail.' },
-  { id: 'pistol', label: 'Move: Pistol', title: 'Gomu Gomu no Pistol', desc: 'The arm stretches out as a solid rubber tube with a fist at the end, then snaps back.' },
+  { id: 'gear2', label: 'Gear Second', title: 'Gear Second', desc: 'A red flush over the skin and steam rising off the body; the jet moves dash before they hit.' },
+  { id: 'pistol', label: 'Move: Pistol', title: 'Gomu Gomu no Pistol', desc: 'In game the player\'s own arm (their skin) shoots out from the shoulder to the target and snaps back; the fist lands with impact lines.' },
+  { id: 'gatling', label: 'Move: Gatling', title: 'Gomu Gomu no Gatling', desc: 'Both arms fire alternately, a dozen stretched punches in a loose cone, each one a skinned arm.' },
+  { id: 'redhawk', label: 'Move: Red Hawk', title: 'Gomu Gomu no Red Hawk', desc: 'A haki-black arm wreathed in flame, a fire line to the target and a burning explosion.' },
+  { id: 'kingkong', label: 'Move: King Kong Gun', title: 'Gomu Gomu no King Kong Gun', desc: 'The arm compresses back into a growing black sphere, then a colossal haki fist flies out.' },
+  { id: 'yasakani', label: 'Move: Yasakani', title: 'Yasakani no Magatama', desc: 'A torrent of light bullets from both hands, each one bursting on impact.' },
+  { id: 'yata', label: 'Move: Yata no Kagami', title: 'Yata no Kagami', desc: 'A beam of light from where the user stood to where the light lands; the user reappears there.' },
+  { id: 'clones', label: 'Move: Light clones', title: 'Yasakani no Magatama: Clones', desc: 'Two glowing doubles hover beside the user and fire light at anything hostile.' },
+  { id: 'tatsumaki', label: 'Move: Tatsumaki', title: 'Tatsumaki (Dragon Twister)', desc: 'Stacked wind rings spin up around the dragon and drag everything into the air.' },
+  { id: 'ragnaraku', label: 'Move: Ragnaraku', title: 'Ragnaraku', desc: 'The dragon drops from the sky as a lightning column and slams into the ground with rings of fire and lightning.' },
   { id: 'laser', label: 'Move: Laser', title: 'Pika Pika: Laser Beam', desc: 'An instant thick beam of light with a white core and a burst at the far end.' },
   { id: 'boro', label: 'Move: Boro Breath', title: 'Boro Breath', desc: 'A fire beam from the dragon\'s mouth, wrapped in a spiralling flame ribbon, exploding where it lands.' },
   { id: 'kong', label: 'Move: Kong Gun', title: 'Gomu Gomu no Kong Gun', desc: 'The haki fist compresses back, then fires forward trailing its arm, with red haki lightning.' },
@@ -212,6 +221,19 @@ function dragon() {
   return g;
 }
 
+// ---- a stretched limb in the player's skin colours (the mod draws the real skin texture)
+function skinArm(a, b, half, color) {
+  const d = new THREE.Vector3().subVectors(b, a); const len = d.length();
+  const geo = new THREE.BoxGeometry(half * 2, half * 2, len);
+  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color }));
+  m.position.copy(a).add(d.clone().multiplyScalar(0.5));
+  m.lookAt(b);
+  return m;
+}
+function fistCube(p, half, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(half * 2, half * 2, half * 1.8), new THREE.MeshLambertMaterial({ color })); m.position.copy(p); return m;
+}
+
 // ---- move primitives (simplified mirrors of FxClient)
 function tube(a, b, radius, color, opacity, emissive) {
   const d = new THREE.Vector3().subVectors(b, a); const len = d.length();
@@ -275,8 +297,8 @@ function build(id) {
       else ext = cycle < 0.25 ? cycle / 0.25 : Math.max(0, 1 - (cycle - 0.25) / 0.5);
       if (arm) { root.remove(arm); root.remove(fist); bolts.forEach(b => root.remove(b)); bolts = []; }
       const a = new THREE.Vector3(-0.35, 1.4, -0.3), b = new THREE.Vector3(-0.35, 1.3, -0.3 - 6.2 * Math.max(0.05, ext));
-      const col = haki ? 0x1c1c22 : 0xe8a77a; arm = tube(a, b, haki ? 0.18 : 0.12, col, 1, false); root.add(arm);
-      fist = new THREE.Mesh(new THREE.BoxGeometry(haki ? 0.7 : 0.45, haki ? 0.7 : 0.45, haki ? 0.6 : 0.4), new THREE.MeshLambertMaterial({ color: col })); fist.position.copy(b); root.add(fist);
+      const col = haki ? 0x1c1c22 : 0xd9a77c; arm = skinArm(a, b, haki ? 0.2 : 0.125, col); root.add(arm);
+      fist = fistCube(b, haki ? 0.32 : 0.17, col); root.add(fist);
       if (haki && ext > 0.2) for (let i = 0; i < 3; i++) { const p = a.clone().lerp(b, Math.random()); const q = p.clone().add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5)); const l = tube(p, q, 0.02, 0xff2a3a, 1, true); root.add(l); bolts.push(l); }
       if (u.steam) u.steam.children.forEach(c => { const i = c.userData.i, k = (t * 0.8 + i * 0.37) % 1; const an = i / 6 * Math.PI * 2 + t * 1.6; c.position.set(Math.cos(an) * 0.45, 0.1 + k * 0.5, Math.sin(an) * 0.45); c.scale.setScalar(0.8 + k); c.material.opacity = 0.5 * (1 - k); }); };
   } else if (id === 'laser' || id === 'boro') {
@@ -293,6 +315,86 @@ function build(id) {
       parts.push(tube(src, b, r * 1.6, col, 0.35, true), tube(src, b, r * 0.9, core, 0.7, true), tube(src, b, r * 0.35, 0xffffff, 1, true));
       if (fire) for (let i = 0; i < 8; i++) { const p = src.clone().lerp(b, i / 8), q = src.clone().lerp(b, (i + 1) / 8); p.y += Math.sin(i * 0.9 + t * 8) * r * 0.8; q.y += Math.sin((i + 1) * 0.9 + t * 8) * r * 0.8; parts.push(tube(p, q, r * 0.3, 0xff3a00, 0.8, true)); }
       if (k >= 1) { const burst = voxelSphere(end, (fire ? 3.5 : 2.0) * (0.6 + 0.4 * Math.min(1, (cycle - 0.08) / 0.1)), core, 0.5, true); parts.push(burst); }
+      parts.forEach(p => root.add(p)); };
+  } else if (id === 'gear2') {
+    const f = figure({ shell: true, shellColor: 0xff4a5a, shellAlpha: 0.3, legs: true, steam: true }); root.add(f);
+    camDist = 5; camH = 1.9; target.set(0, 1.1, 0);
+    anim = (t) => { const u = f.userData; u.armR.rotation.x = -0.3 + Math.sin(t * 6) * 0.2; u.armL.rotation.x = 0.3 - Math.sin(t * 6) * 0.2;
+      if (u.steam) u.steam.children.forEach(c => { const i = c.userData.i, k = (t * 1.2 + i * 0.37) % 1; const an = i / 6 * Math.PI * 2 + t * 2; c.position.set(Math.cos(an) * 0.4, 0.1 + k * 0.7, Math.sin(an) * 0.4); c.scale.setScalar(0.7 + k); c.material.opacity = 0.6 * (1 - k); }); };
+  } else if (id === 'gatling' || id === 'redhawk') {
+    const red = id === 'redhawk';
+    const f = figure(red ? { shell: true, shellColor: 0xff4a5a, shellAlpha: 0.3, legs: true } : {}); root.add(f);
+    const dummy = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6), new THREE.MeshLambertMaterial({ color: 0x5a6b7c })); dummy.position.set(0, 0.9, -7); root.add(dummy);
+    camDist = 9; camH = 3; target.set(0, 1, -3);
+    let parts = [];
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const u = f.userData; u.armR.rotation.x = -Math.PI / 2; u.armL.rotation.x = -Math.PI / 2;
+      if (!red) {
+        for (let i = 0; i < 2; i++) {
+          const ph = ((t * 6 + i * 0.5) % 1);
+          const ext = ph < 0.4 ? ph / 0.4 : Math.max(0, 1 - (ph - 0.4) / 0.4);
+          const sx = i === 0 ? -0.35 : 0.35;
+          const a = new THREE.Vector3(sx, 1.4, -0.3), b = new THREE.Vector3(sx * 2.2 + Math.sin(t * 7 + i) * 0.6, 1.3 + Math.cos(t * 5 + i) * 0.5, -0.3 - 6.0 * Math.max(0.05, ext));
+          parts.push(skinArm(a, b, 0.125, i === 0 ? 0xd9a77c : 0xd9a77c), fistCube(b, 0.17, 0xd9a77c));
+        }
+      } else {
+        const cycle = (t % 2.4) / 2.4; const ext = cycle < 0.15 ? cycle / 0.15 : cycle < 0.6 ? 1 : Math.max(0, 1 - (cycle - 0.6) / 0.3);
+        const a = new THREE.Vector3(-0.35, 1.4, -0.3), b = new THREE.Vector3(-0.35, 1.2, -0.3 - 6.3 * Math.max(0.05, ext));
+        parts.push(skinArm(a, b, 0.2, 0x2a1a1a), fistCube(b, 0.3, 0x1c1c22), tube(a, b, 0.32, 0xff5a1f, 0.35, true), tube(a, b, 0.12, 0xffd36a, 0.6, true));
+        if (cycle > 0.15 && cycle < 0.7) { const k = Math.min(1, (cycle - 0.15) / 0.12); parts.push(voxelSphere(new THREE.Vector3(-0.35, 1.0, -6.8), 2.2 * k, 0xff8a20, 0.45, true)); }
+      }
+      parts.forEach(p => root.add(p)); };
+  } else if (id === 'kingkong') {
+    const f = figure({ fists: 0.7, fistColor: 0x1c1c22, shell: true, shellColor: 0x1c1c22, shellAlpha: 1, steam: true }); root.add(f);
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(8, 5, 0.6), new THREE.MeshLambertMaterial({ color: 0x4a5566 })); wall.position.set(0, 2.5, -16); root.add(wall);
+    camDist = 16; camH = 5; target.set(0, 2, -6);
+    let parts = [];
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const u = f.userData; u.armR.rotation.x = -Math.PI / 2;
+      const cycle = (t % 3.2) / 3.2;
+      if (cycle < 0.45) { const k = cycle / 0.45; const back = new THREE.Vector3(-0.35, 1.3, 1.2 + k * 0.6); parts.push(skinArm(new THREE.Vector3(-0.35, 1.4, -0.1), back, 0.2 + k * 0.2, 0x1c1c22), voxelSphere(back, 0.6 + k * 1.4, 0x1c1c22, 0.95, false)); }
+      else { const k = Math.min(1, (cycle - 0.45) / 0.3); const fistP = new THREE.Vector3(-0.35, 1.4, -0.5 - 14 * k); parts.push(skinArm(new THREE.Vector3(-0.35, 1.4, -0.1), fistP, 0.5, 0x1c1c22), fistCube(fistP, 1.5, 0x1c1c22)); if (k >= 1) { parts.push(voxelSphere(new THREE.Vector3(0, 2.2, -15.2), 3.5, 0x8a1f2a, 0.5, true)); } }
+      if (u.steam) u.steam.children.forEach(c => { const i = c.userData.i, k = (t * 0.8 + i * 0.37) % 1; const an = i / 6 * Math.PI * 2 + t * 1.6; c.position.set(Math.cos(an) * 0.45, 0.1 + k * 0.5, Math.sin(an) * 0.45); c.scale.setScalar(0.8 + k); c.material.opacity = 0.5 * (1 - k); });
+      parts.forEach(p => root.add(p)); };
+  } else if (id === 'yasakani' || id === 'clones') {
+    const clones = id === 'clones';
+    const f = figure({ shell: true, shellColor: 0xffe24a, shellAlpha: 0.4, legs: true }); root.add(f);
+    const dummies = [-3, 0, 3].map(x => { const d = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6), new THREE.MeshLambertMaterial({ color: 0x5a6b7c })); d.position.set(x, 0.9, -10); root.add(d); return d; });
+    let cl = [];
+    if (clones) cl = [-2.2, 2.2].map(x => { const g = figure({ shell: true, shellColor: 0xffe24a, shellAlpha: 0.75, legs: true }); g.position.set(x, 0.3, 0.4); g.traverse(o => { if (o.material && !o.material.transparent) { o.material = new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }); } }); root.add(g); return g; });
+    camDist = 12; camH = 4; target.set(0, 1.5, -5);
+    let parts = [];
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const u = f.userData; u.armR.rotation.x = u.armL.rotation.x = -Math.PI / 2;
+      const srcs = clones ? cl.map(g => new THREE.Vector3(g.position.x, 1.3 + Math.sin(t * 2) * 0.1, 0.4)) : [new THREE.Vector3(-0.35, 1.4, -0.3), new THREE.Vector3(0.35, 1.4, -0.3)];
+      cl.forEach(g => { g.position.y = 0.3 + Math.sin(t * 2) * 0.12; });
+      for (let i = 0; i < 24; i++) { const k = ((t * 1.6 + i * 0.137) % 1); const src = srcs[i % srcs.length]; const tgt = dummies[i % 3].position.clone().add(new THREE.Vector3(Math.sin(i * 7.1) * 0.8, 0.6 + Math.cos(i * 3.3) * 0.5, 0)); const p = src.clone().lerp(tgt, k); const b = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.5), new THREE.MeshBasicMaterial({ color: 0xfff4a0, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })); b.position.copy(p); b.lookAt(tgt); parts.push(b); parts.push(tube(p, p.clone().lerp(src, 0.08), 0.04, 0xffe24a, 0.6, true)); if (k > 0.96) parts.push(voxelSphere(tgt, 0.6, 0xffffff, 0.6, true)); }
+      parts.forEach(p => root.add(p)); };
+  } else if (id === 'yata') {
+    const f = figure({ shell: true, shellColor: 0xffe24a, shellAlpha: 0.4, legs: true }); root.add(f);
+    const f2 = figure({ shell: true, shellColor: 0xffe24a, shellAlpha: 0.4, legs: true }); f2.position.set(6, 3, -9); root.add(f2);
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshLambertMaterial({ color: 0x4a5566 })); ledge.position.set(6, 1.5, -9); root.add(ledge);
+    camDist = 13; camH = 4; target.set(3, 2, -4);
+    let parts = [];
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const cycle = (t % 2.5) / 2.5;
+      const a = new THREE.Vector3(0, 1.0, 0), b = new THREE.Vector3(6, 4.0, -9);
+      f.visible = cycle < 0.35; f2.visible = cycle >= 0.4;
+      if (cycle >= 0.3 && cycle < 0.6) { const k = Math.min(1, (cycle - 0.3) / 0.08); parts.push(tube(a, a.clone().lerp(b, k), 0.28, 0xffe24a, 0.6, true), tube(a, a.clone().lerp(b, k), 0.1, 0xffffff, 1, true), voxelSphere(a, 1.0, 0xffffff, 0.5, true)); if (k >= 1) parts.push(voxelSphere(b, 1.2, 0xffffff, 0.5, true)); }
+      parts.forEach(p => root.add(p)); };
+  } else if (id === 'tatsumaki' || id === 'ragnaraku') {
+    const d = dragon(); d.scale.setScalar(2.2); root.add(d);
+    const dummies = [[-5, 0, -2], [4, 0, -5], [1, 0, 5]].map(v => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6), new THREE.MeshLambertMaterial({ color: 0x5a6b7c })); m.position.set(v[0], 0.9, v[2]); root.add(m); return m; });
+    camDist = 22; camH = 8; target.set(0, 3, 0);
+    let parts = [];
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const u = d.userData; const w = t * 2.4;
+      u.body.forEach((b, i) => { b.rotation.y = Math.sin(w - i * 0.7) * 0.16; }); u.tails.forEach((b, i) => { b.rotation.y = Math.sin(w - (4 + i) * 0.7) * 0.2; });
+      if (id === 'tatsumaki') {
+        d.position.y = 3; d.rotation.y = t * 1.5;
+        for (let i = 0; i < 6; i++) { const r = 4 + i * 1.1, y = 0.5 + i * 1.3; const g = new THREE.Mesh(new THREE.TorusGeometry(r, 0.12, 6, 40), new THREE.MeshBasicMaterial({ color: 0xbff3ec, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); g.rotation.x = Math.PI / 2; g.position.y = y; g.rotation.z = t * (1 + i * 0.1); parts.push(g); }
+        dummies.forEach((m, i) => { const a = t * 3 + i * 2; m.position.set(Math.cos(a) * 5, 1 + ((t + i) % 3) * 1.5, Math.sin(a) * 5); });
+      } else {
+        const cycle = (t % 3) / 3;
+        if (cycle < 0.35) { d.position.y = 3 + cycle / 0.35 * 20; d.rotation.x = -0.6; }
+        else if (cycle < 0.55) { const k = (cycle - 0.35) / 0.2; d.position.y = 23 - k * 21; d.rotation.x = 1.2; parts.push(tube(new THREE.Vector3(0, 24, 0), new THREE.Vector3(0, d.position.y, 0), 0.6, 0x7fd4ff, 0.5, true)); }
+        else { d.position.y = 2; d.rotation.x = 0; const k = Math.min(1, (cycle - 0.55) / 0.15); for (const [r, col] of [[9, 0x7fd4ff], [6.5, 0xff5a1f], [4, 0xffffff]]) { const g = new THREE.Mesh(new THREE.TorusGeometry(r * k, 0.2, 6, 48), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8 * (1 - k * 0.5), blending: THREE.AdditiveBlending, depthWrite: false })); g.rotation.x = Math.PI / 2; g.position.y = 0.3; parts.push(g); } for (let i = 0; i < 5; i++) parts.push(tube(new THREE.Vector3(Math.sin(i * 2.1) * 7 * k, 20, Math.cos(i * 2.1) * 7 * k), new THREE.Vector3(Math.sin(i * 2.1) * 7 * k, 0, Math.cos(i * 2.1) * 7 * k), 0.08, 0xbfe9ff, 0.9, true)); dummies.forEach((m, i) => { m.position.y = 0.9 + k * 3; m.position.x *= 1 + k * 0.05; }); }
+      }
       parts.forEach(p => root.add(p)); };
   }
 }

@@ -175,6 +175,125 @@ public final class Seiryu {
             return true;
         });
 
+        Moves.register("thunder_bagua_leap", c -> {
+            // leap in, land the Thunder Bagua
+            ServerPlayer p = c.p();
+            ServerLevel l = c.level();
+            LivingEntity t = Gx.aimAssist(p, 12);
+            Vec3 to = t != null ? Gx.chest(t) : Gx.lookPoint(p, 8);
+            Vec3 d = to.subtract(p.position().add(0, 1, 0));
+            Gomu.dash(p, d.normalize().add(0, 0.3, 0), Math.min(2.0, 0.8 + d.length() * 0.15));
+            Scheduler.schedule(6, () -> {
+                if (!p.isAlive()) return;
+                Vec3 at = p.position().add(0, 1, 0).add(p.getLookAngle().scale(1.5));
+                Vfx.arc(l, Fx.LIGHTNING, p.position().add(0, 1.1, 0), p.getYRot() + 90, 2.4, 170, 0.7, false, 10);
+                Vfx.bolt(l, Fx.LIGHTNING, at.add(0, 6, 0), at);
+                for (LivingEntity e : Gx.cone(p, 4.5, 0.5)) { Gx.haki(e, p, c.dmg(18)); Gx.knock(e, p.position(), 2.6, 0.7); }
+                Gx.sound(l, at, SoundEvents.LIGHTNING_BOLT_THUNDER, 1.2F, 1.5F);
+            });
+            return true;
+        });
+        Moves.register("bolo_barrage", c -> {
+            // Bolo Breath split into a spray of fireballs
+            ServerPlayer p = c.p();
+            Scheduler.repeat(8, 1, i -> {
+                if (!p.isAlive()) return;
+                Vec3 dir = p.getLookAngle().add(Vfx.randDir(c.level()).scale(0.12)).normalize();
+                FruitProjectile.fire(c.level(), p, Kind.FIREBALL, c.dmg(8), p.getEyePosition().add(dir.scale(1.0 * c.scale())), dir, 1.5F).size(0.7F * c.scale()).life(50);
+                if (i % 2 == 0) Gx.sound(c.level(), p.position(), SoundEvents.BLAZE_SHOOT, 1.0F, 0.8F);
+            });
+            return true;
+        });
+        Moves.register("tail_swipe", c -> {
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            double r = (c.s().inForm("seiryu_dragon") ? 8 : 4.5) * c.scale() / Math.max(1, c.scale() * 0.6);
+            Vec3 at = p.position().add(0, 0.8 * c.scale(), 0);
+            Vfx.arc(l, Fx.DRAGON, at, p.getYRot() + 180, r * 0.7, 300, 0.3, false, 12);
+            Vfx.ring(l, Fx.DRAGON, at, r * 0.8, false);
+            for (LivingEntity e : Gx.around(l, at, r, p)) { Gx.hurtNow(e, p, c.dmg(16)); Gx.knock(e, at, 3.0, 0.8); }
+            Gx.sound(l, at, SoundEvents.PLAYER_ATTACK_SWEEP, 1.4F, 0.5F);
+            Vfx.debris(l, Gx.ground(l, at), 16, r * 0.5, 0.3);
+            return true;
+        });
+        Moves.register("tail_grab", c -> {
+            // the prehensile tail snatches a target, holds it, then hurls it
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            LivingEntity t = Gx.aimAssist(p, 10);
+            if (t == null) return false;
+            Vfx.arm(l, Fx.DRAGON, p.position().add(0, 0.6, 0), Gx.chest(t), 0.22 * c.scale(), 22);
+            Gx.root(t, 22);
+            Scheduler.repeat(4, 4, i -> { if (t.isAlive()) { Gx.pull(t, p.position().add(0, 1.5, 0).add(c.flat().scale(2)), 1.0); Gx.hurtNow(t, p, c.dmg(3)); } });
+            Scheduler.schedule(20, () -> {
+                if (!t.isAlive()) return;
+                Gx.hurtNow(t, p, c.dmg(12));
+                Gx.knock(t, p.position(), 3.5, 1.2);
+                Vfx.impact(l, Fx.DRAGON, Gx.chest(t));
+                Gx.sound(l, t.position(), SoundEvents.PLAYER_ATTACK_STRONG, 1.2F, 0.6F);
+            });
+            return true;
+        });
+        Moves.register("kaen_daiko", c -> {
+            // Kaen Daiko: breathe a dragon of flame over the whole body
+            c.s().daikoTicks = 300;
+            ServerLevel l = c.level();
+            Vec3 at = c.pos().add(0, 1.0 * c.scale(), 0);
+            breath(c, 6 * c.scale(), 0.6 * c.scale(), c.dmg(6), 1.5, Fx.FIRE, false);
+            Vfx.sphere(l, Fx.FIRE, at, (c.s().inForm("seiryu_dragon") ? 5.0 : 2.8), 14);
+            Vfx.ring(l, Fx.FIRE, at, 6, false);
+            Gx.sound(l, at, SoundEvents.ENDER_DRAGON_GROWL, 1.4F, 0.6F);
+            Gx.sound(l, at, SoundEvents.FIRECHARGE_USE, 1.4F, 0.5F);
+            return true;
+        });
+        Moves.register("bite", c -> {
+            // the dragon chomps down: anything in front of the jaws is crushed and dragged
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            Vec3 jaw = p.getEyePosition().add(p.getLookAngle().scale(2.5 * c.scale()));
+            Gomu.dash(p, c.look(), 1.2);
+            Vfx.arc(l, Fx.DRAGON, jaw, p.getYRot() + 90, 2.2 * c.scale(), 160, 1.2, false, 8);
+            Vfx.arc(l, Fx.DRAGON, jaw, p.getYRot() + 90, 2.2 * c.scale(), 160, -1.2, false, 8);
+            for (LivingEntity e : Gx.cone(p, 5 * c.scale(), 0.6)) {
+                Gx.haki(e, p, c.dmg(30));
+                Gx.pull(e, jaw, 1.5);
+                Gx.root(e, 20);
+                Vfx.impact(l, Fx.DRAGON, Gx.chest(e));
+            }
+            Gx.sound(l, jaw, SoundEvents.ENDER_DRAGON_GROWL, 1.2F, 1.2F);
+            Gx.sound(l, jaw, SoundEvents.PLAYER_ATTACK_CRIT, 1.4F, 0.5F);
+            return true;
+        });
+        Moves.register("claw_swipe", c -> {
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            Vec3 at = p.position().add(0, 1.0 * c.scale(), 0);
+            Vfx.arc(l, Fx.DRAGON, at, p.getYRot() + 90, 3.0 * c.scale(), 150, 0.8, false, 10);
+            for (int k = 0; k < 3; k++) Vfx.line(l, Fx.DRAGON, at.add(c.look().scale(1.0)).add(c.right().scale((k - 1) * 0.5)).add(0, 1.5, 0), at.add(c.look().scale(4.0 * c.scale())).add(c.right().scale((k - 1) * 0.8)).add(0, -0.5, 0));
+            for (LivingEntity e : Gx.cone(p, 5 * c.scale(), 0.55)) { Gx.hurtNow(e, p, c.dmg(18)); Gx.knock(e, p.position(), 2.4, 0.5); Gx.cut(l, Gx.chest(e), Gx.chest(e).add(c.flat()), 1.0F); }
+            Gx.sound(l, at, SoundEvents.PLAYER_ATTACK_SWEEP, 1.4F, 0.4F);
+            return true;
+        });
+        Moves.register("tatsumaki_kaifu", c -> {
+            // the Dragon Twister throws out wind scythes in every direction
+            ServerLevel l = c.level();
+            ServerPlayer p = c.p();
+            Gx.sound(l, p.position(), SoundEvents.PHANTOM_FLAP, 1.6F, 0.3F);
+            Scheduler.repeat(12, 3, i -> {
+                if (!p.isAlive()) return;
+                Vec3 at = p.position();
+                double r = 8 * c.scale();
+                Vfx.arc(l, Fx.WIND, at.add(0, 0.5 + (i % 4) * 1.5, 0), i * 60, r * (0.5 + 0.1 * (i % 4)), 320, 0.4, i % 2 == 1, 10);
+                for (LivingEntity e : Gx.around(l, at, r, p)) { Gx.pull(e, at.add(0, 3, 0), 0.4); e.setDeltaMovement(e.getDeltaMovement().add(0, 0.2, 0)); e.hurtMarked = true; Gx.hurtNow(e, p, c.dmg(3)); e.resetFallDistance(); }
+                if (i % 2 == 0) {
+                    double a = Math.toRadians(i * 60 + p.getYRot());
+                    Vec3 dir = new Vec3(-Math.sin(a), 0.05, Math.cos(a));
+                    FruitProjectile.fire(l, p, Kind.KAIFU, c.dmg(12), at.add(0, 2, 0).add(dir.scale(2)), dir, 1.6F).flags(FruitProjectile.FLAG_PIERCE | FruitProjectile.FLAG_CUT).size(1.4F).life(60);
+                }
+            });
+            return true;
+        });
+
         // ---- dragon
         Moves.register("kaifu_storm", c -> {
             ServerPlayer p = c.p();

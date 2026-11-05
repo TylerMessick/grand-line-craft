@@ -22,6 +22,7 @@ public final class ClientState {
     public static int exhaust;
     public static boolean wet;
     public static int formColor = 0xFFFFFF;
+    public static int page, pages = 1;
 
     public static final Map<Integer, ModNetwork.FormView> VIEWS = new HashMap<>();
 
@@ -47,6 +48,8 @@ public final class ClientState {
         exhaust = s.exhaust();
         wet = s.wet();
         formColor = s.formColor();
+        page = s.page();
+        pages = s.pages();
     }
 
     public static void accept(ModNetwork.FormView v) {

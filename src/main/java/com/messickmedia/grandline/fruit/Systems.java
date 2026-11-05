@@ -277,6 +277,15 @@ public final class Systems {
             if (p.tickCount % 2 == 0) Vfx.sphere(level, Fx.RUBBER, c.add(0, 0.9, 0), 1.6 * p.getScale(), 3);
             for (LivingEntity e : Gx.around(level, c.add(0, 0.9, 0), 1.8 * p.getScale(), p)) Gx.knock(e, c, 0.9, 0.3);
         }
+        if (s.daikoTicks > 0) {
+            // Kaen Daiko: a dragon of flame wraps the body; anything near it burns
+            double r = s.inForm("seiryu_dragon") ? 5.0 : 2.6;
+            if (p.tickCount % 2 == 0) Vfx.puff(level, Fx.FIRE, c.add(0, 1.0 * p.getScale(), 0), r * 0.6, 3);
+            if (p.tickCount % 6 == 0) Vfx.ring(level, Fx.FIRE, c.add(0, 0.8 * p.getScale(), 0), r, p.tickCount % 12 == 0);
+            if (p.tickCount % 10 == 0) for (LivingEntity e : Gx.around(level, c, r, p)) { Gx.hurtNow(e, p, 4.0F); e.igniteForSeconds(4); }
+            if (p.tickCount % 5 == 0) Gx.scorch(level, Gx.ground(level, c.add(Vfx.randDir(level).multiply(r, 0, r))), 0.4, 0.0F);
+        }
+        if (s.accelTicks > 0 && p.tickCount % 3 == 0) Vfx.dress(level, Fx.LIGHT, c.add(0, 1.0, 0), 0.6, 0.5);
         if (s.murakumoTicks > 0 && p.tickCount % 2 == 0) {
             Vec3 hand = p.getEyePosition().add(p.getLookAngle().scale(0.5D)).add(0, -0.4, 0);
             Vfx.line(level, Fx.LIGHT, hand, hand.add(p.getLookAngle().scale(1.6D)).add(0, 0.2, 0));
@@ -305,7 +314,7 @@ public final class Systems {
         if (!s.hasFruit()) return;
         if (isWeak(p, s)) { Gx.msg(p, Component.translatable("message.grandline.sea_weak").withStyle(ChatFormatting.AQUA)); return; }
         if (s.exhaustTicks > 0) { Gx.msg(p, Component.translatable("message.grandline.exhausted").withStyle(ChatFormatting.GRAY)); return; }
-        if (s.cd[6] > 0) return;
+        if (s.cd[Pirate.FORM_SLOT] > 0) return;
         FruitInfo f = s.info();
         if (f.forms().size() <= 1) { Gx.msg(p, Component.translatable("message.grandline.no_forms").withStyle(ChatFormatting.GRAY)); return; }
         boolean creative = p.getAbilities().instabuild;
@@ -317,7 +326,7 @@ public final class Systems {
         if (next == s.form) return;
         if (next != 0 && s.stamina < 20 && !creative) { Gx.msg(p, Component.translatable("message.grandline.no_stamina").withStyle(ChatFormatting.GRAY)); return; }
         setForm(p, s, next, false);
-        s.setCooldown(6, 30);
+        s.setCooldown(Pirate.FORM_SLOT, 30);
         ModNetwork.sync(p);
     }
 
@@ -326,6 +335,7 @@ public final class Systems {
         if (f == null) return;
         int old = s.form;
         s.form = Math.floorMod(index, f.forms().size());
+        s.page = 0;
         s.formTicks = 0;
         s.gigantTicks = 0;
         s.rubberWorldTicks = 0;
@@ -366,9 +376,9 @@ public final class Systems {
         Pirate s = Gx.data(p);
         if (!s.hasFruit() || !s.info().hasToggle()) return;
         if (isWeak(p, s)) { Gx.msg(p, Component.translatable("message.grandline.sea_weak").withStyle(ChatFormatting.AQUA)); return; }
-        if (s.cd[7] > 0) return;
+        if (s.cd[Pirate.TOGGLE_SLOT] > 0) return;
         s.toggle = !s.toggle;
-        s.setCooldown(7, 10);
+        s.setCooldown(Pirate.TOGGLE_SLOT, 10);
         ServerLevel level = p.serverLevel();
         Vec3 c = p.position().add(0, 1, 0);
         if (s.is("pika_pika")) {
@@ -380,6 +390,17 @@ public final class Systems {
         Component name = Component.translatable("toggle.grandline." + s.info().toggle());
         Gx.msg(p, Component.translatable(s.toggle ? "message.grandline.toggle_on" : "message.grandline.toggle_off", name).withColor(s.info().color()));
         ModNetwork.broadcastForm(p);
+        ModNetwork.sync(p);
+    }
+
+    /** U: flip to the next page of moves of the current form. */
+    public static void nextPage(ServerPlayer p) {
+        Pirate s = Gx.data(p);
+        if (!s.hasFruit()) return;
+        int pages = s.pages();
+        if (pages <= 1) return;
+        s.page = (s.page + 1) % pages;
+        Gx.sound(p.serverLevel(), p.position(), SoundEvents.UI_BUTTON_CLICK.value(), 0.5F, 1.4F);
         ModNetwork.sync(p);
     }
 
@@ -403,6 +424,13 @@ public final class Systems {
                 Vfx.arc(attacker.serverLevel(), Fx.LIGHT, Gx.chest(victim), attacker.getYRot() + 90, 1.2, 150, 0.4, false, 10);
                 victim.igniteForSeconds(2);
             }
+            if (a.hasFruit() && a.accelTicks > 0 && !src.is(Gx.FRUIT) && !src.is(Gx.HAKI)) {
+                event.setAmount(event.getAmount() + 10.0F * Moves.power(a));
+                Vfx.sphere(attacker.serverLevel(), Fx.LIGHT, Gx.chest(victim), 1.2, 6);
+                Vfx.beam(attacker.serverLevel(), Fx.LIGHT, attacker.getEyePosition(), Gx.chest(victim), 0.2, 5);
+                for (LivingEntity o : Gx.around(attacker.serverLevel(), Gx.chest(victim), 2.5, attacker)) if (o != victim) Gx.hurtNow(o, attacker, 6.0F);
+                Gx.sound(attacker.serverLevel(), victim.position(), SoundEvents.GENERIC_EXPLODE.value(), 0.6F, 1.8F);
+            }
             if (a.hasFruit() && a.inForm("seiryu_dragon") && !src.is(Gx.FRUIT)) {
                 event.setAmount(event.getAmount() + 6.0F);
                 Gx.knock(victim, attacker.position(), 1.2, 0.4);
@@ -422,6 +450,17 @@ public final class Systems {
                 // rubber: blunt hits (unarmed mobs, explosions) bounce off; blades and arrows still cut
                 boolean blunt = src.is(DamageTypeTags.IS_EXPLOSION) || (src.getDirectEntity() instanceof LivingEntity l && !(l instanceof Player) && l.getMainHandItem().isEmpty() && !(l instanceof Enemy && l.getMainHandItem().getItem() instanceof net.minecraft.world.item.SwordItem));
                 if (blunt && !weak) amount *= 0.45F;
+                if (s.cannonballTicks > 0 && !weak && src.getDirectEntity() instanceof LivingEntity attacker && attacker != p) {
+                    // Tankman: the blow sinks in and the attacker is fired back out
+                    event.setCanceled(true);
+                    s.cannonballTicks = 0;
+                    Gx.haki(attacker, p, event.getAmount() * 2.0F + 20.0F);
+                    Gx.knock(attacker, p.position(), 4.0, 1.0);
+                    Vfx.impact(p.serverLevel(), Fx.HAKI, Gx.chest(attacker));
+                    Vfx.ring(p.serverLevel(), Fx.HAKI, Gx.chest(p), 2.5, true);
+                    Gx.sound(p.serverLevel(), p.position(), SoundEvents.GENERIC_EXPLODE.value(), 1.5F, 0.9F);
+                    return;
+                }
                 if (s.balloonTicks > 0 && !weak) {
                     if (src.getDirectEntity() instanceof Projectile proj) {
                         proj.setDeltaMovement(proj.getDeltaMovement().scale(-1.2D));

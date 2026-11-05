@@ -37,7 +37,7 @@ public class FruitProjectile extends Projectile {
     public enum Kind {
         LIGHT_BULLET(0.35F, 0, false, Fx.LIGHT), KAIFU(1.2F, 0, false, Fx.WIND), FIREBALL(1.1F, 0, false, Fx.FIRE),
         FIST(0.9F, 0, true, Fx.RUBBER), HAKI_FIST(1.2F, 0, true, Fx.HAKI), GIANT_FIST(3.0F, 0, false, Fx.RUBBER), ELEPHANT_FIST(3.2F, 0, false, Fx.HAKI), NIKA_FIST(6.0F, 0, false, Fx.NIKA),
-        LIGHT_ORB(0.8F, 0, false, Fx.LIGHT);
+        LIGHT_ORB(0.8F, 0, false, Fx.LIGHT), LIGHT_CLONE(1.0F, 0, false, Fx.LIGHT);
 
         public final float scale, gravity;
         public final boolean homing;
@@ -102,10 +102,46 @@ public class FruitProjectile extends Projectile {
     @Override
     public boolean isNoGravity() { return true; }
 
+    /** A light clone: a glowing double of the user that hovers beside them and fires light at anything hostile. */
+    private void tickClone(ServerLevel level) {
+        Entity owner = this.getOwner();
+        if (--this.life <= 0 || owner == null || !owner.isAlive()) {
+            Vfx.sphere(level, Fx.LIGHT, this.position().add(0, 0.9, 0), 1.0, 6);
+            this.discard();
+            return;
+        }
+        // drift to a spot beside the owner
+        double side = (this.getId() % 2 == 0 ? 1 : -1) * 2.2;
+        Vec3 look = owner.getLookAngle();
+        Vec3 right = new Vec3(-look.z, 0, look.x).normalize();
+        Vec3 want = owner.position().add(right.scale(side)).add(look.multiply(-0.5, 0, -0.5)).add(0, 0.2 + 0.15 * Math.sin(this.tickCount * 0.15), 0);
+        this.setDeltaMovement(want.subtract(this.position()).scale(0.2));
+        this.setPos(this.getX() + this.getDeltaMovement().x, this.getY() + this.getDeltaMovement().y, this.getZ() + this.getDeltaMovement().z);
+        this.setYRot(owner.getYRot());
+        if (this.tickCount % 12 == 0) {
+            LivingEntity target = Gx.around(level, this.position(), 24, owner).stream()
+                    .filter(e -> e instanceof net.minecraft.world.entity.monster.Enemy || e instanceof net.minecraft.world.entity.player.Player)
+                    .min(java.util.Comparator.comparingDouble(e -> e.distanceToSqr(this))).orElse(null);
+            if (target != null) {
+                Vec3 from = this.position().add(0, 1.3, 0);
+                for (int k = 0; k < 2; k++) {
+                    Vec3 dir = Gx.chest(target).subtract(from).normalize().add(Vfx.randDir(level).scale(0.05));
+                    fire(level, owner, Kind.LIGHT_BULLET, this.damage, from, dir, 3.0F).life(40);
+                }
+                Vfx.sphere(level, Fx.LIGHT, from, 0.4, 3);
+            }
+        }
+        if (this.tickCount % 4 == 0) Vfx.dress(level, Fx.LIGHT, this.position().add(0, 1, 0), 0.5, 0.3);
+    }
+
     @Override
     public void tick() {
         super.tick();
         Kind kind = this.kind();
+        if (kind == Kind.LIGHT_CLONE) {
+            if (this.level() instanceof ServerLevel level) tickClone(level);
+            return;
+        }
         Vec3 v = this.getDeltaMovement();
         if (this.level() instanceof ServerLevel level) {
             if (--this.life <= 0) {

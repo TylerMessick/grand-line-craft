@@ -23,6 +23,11 @@ public final class Vfx {
         Fx.send(l, Fx.ARM, style, (float) a.x, (float) a.y, (float) a.z, (float) b.x, (float) b.y, (float) b.z, (float) thick, life);
     }
 
+    /** A player's own limb stretches to a point, drawn with the player's skin. limb 0 right arm, 1 left arm, 2 right leg, 3 left leg. */
+    public static void limb(ServerLevel l, net.minecraft.server.level.ServerPlayer p, int limb, Vec3 to, double thick, int life, int style) {
+        com.messickmedia.grandline.net.ModNetwork.stretch(p, limb, to, thick, life, style);
+    }
+
     public static void beam(ServerLevel l, int style, Vec3 a, Vec3 b, double radius, int life) {
         Fx.send(l, Fx.BEAM, style, (float) a.x, (float) a.y, (float) a.z, (float) b.x, (float) b.y, (float) b.z, (float) radius, life);
     }

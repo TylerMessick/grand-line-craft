@@ -29,14 +29,17 @@ public class Pirate {
     public int kills;
 
     // ---------------------------------------------------------------- live-only
-    /** 0-5 move cooldowns, 6 form shift, 7 toggle. */
-    public final int[] cd = new int[8];
-    public final int[] cdMax = new int[8];
+    /** 0-11 move cooldowns (two pages of six), 12 form shift, 13 toggle. */
+    public static final int FORM_SLOT = 12, TOGGLE_SLOT = 13;
+    public final int[] cd = new int[14];
+    public final int[] cdMax = new int[14];
+    /** Which page of six moves the keys drive. */
+    public int page;
     /** Ticks of exhaustion after a gear ends (Gear 2 fatigue, Gear 5 collapse): no moves, weakness. */
     public int exhaustTicks;
     /** Ticks the player has been in water (sea weakness ramps up). */
     public int wetTicks;
-    public int balloonTicks, murakumoTicks, gigantTicks, rubberWorldTicks, cloudTicks, hardenTicks;
+    public int balloonTicks, murakumoTicks, gigantTicks, rubberWorldTicks, cloudTicks, hardenTicks, accelTicks, daikoTicks, cannonballTicks;
     public int formTicks;
     public float drainAcc;
     public String lastMove = "";
@@ -89,6 +92,10 @@ public class Pirate {
         return true;
     }
 
+    public int pages() {
+        return hasFruit() ? (formInfo().moves().size() + 5) / 6 : 1;
+    }
+
     public void setCooldown(int slot, int ticks) {
         this.cd[slot] = ticks;
         this.cdMax[slot] = Math.max(1, ticks);
@@ -97,6 +104,8 @@ public class Pirate {
     public void resetLive() {
         Arrays.fill(this.cd, 0);
         this.exhaustTicks = this.wetTicks = this.balloonTicks = this.murakumoTicks = this.gigantTicks = this.rubberWorldTicks = this.cloudTicks = this.hardenTicks = 0;
+        this.accelTicks = this.daikoTicks = this.cannonballTicks = 0;
+        this.page = 0;
         this.formTicks = 0;
         this.drainAcc = 0;
         this.flying = false;
@@ -112,6 +121,9 @@ public class Pirate {
         if (this.rubberWorldTicks > 0) this.rubberWorldTicks--;
         if (this.cloudTicks > 0) this.cloudTicks--;
         if (this.hardenTicks > 0) this.hardenTicks--;
+        if (this.accelTicks > 0) this.accelTicks--;
+        if (this.daikoTicks > 0) this.daikoTicks--;
+        if (this.cannonballTicks > 0) this.cannonballTicks--;
         this.formTicks++;
         float regen = 100.0F / 600.0F * (float) (double) Config.STAMINA_REGEN.get();
         if (foodLevel <= 6) regen *= 0.4F;

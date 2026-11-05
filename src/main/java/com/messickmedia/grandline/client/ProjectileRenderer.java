@@ -26,7 +26,7 @@ public class ProjectileRenderer extends EntityRenderer<FruitProjectile> {
     public static final ModelLayerLocation LAYER = new ModelLayerLocation(GrandLine.id("fruit_projectile"), "main");
     private static final ResourceLocation TEX = GrandLine.id("textures/entity/projectile.png");
 
-    private final ModelPart core, shell, fist, knuckles, blade;
+    private final ModelPart core, shell, fist, knuckles, blade, cloneHead, cloneBody, cloneArm, cloneLeg;
 
     public ProjectileRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -36,6 +36,10 @@ public class ProjectileRenderer extends EntityRenderer<FruitProjectile> {
         this.fist = root.getChild("fist");
         this.knuckles = root.getChild("knuckles");
         this.blade = root.getChild("blade");
+        this.cloneHead = root.getChild("clone_head");
+        this.cloneBody = root.getChild("clone_body");
+        this.cloneArm = root.getChild("clone_arm");
+        this.cloneLeg = root.getChild("clone_leg");
         this.shadowRadius = 0.0F;
     }
 
@@ -48,6 +52,10 @@ public class ProjectileRenderer extends EntityRenderer<FruitProjectile> {
         mesh.getRoot().addOrReplaceChild("knuckles", CubeListBuilder.create().texOffs(28, 16).addBox(-4.0F, -4.5F, -5.0F, 8.0F, 3.0F, 3.0F)
                 .texOffs(28, 22).addBox(-4.5F, -1.0F, -1.0F, 2.0F, 5.0F, 4.0F), PartPose.ZERO);
         mesh.getRoot().addOrReplaceChild("blade", CubeListBuilder.create().texOffs(0, 48).addBox(-8.0F, -0.5F, -3.0F, 16.0F, 1.0F, 6.0F), PartPose.ZERO);
+        mesh.getRoot().addOrReplaceChild("clone_head", CubeListBuilder.create().texOffs(0, 0).addBox(-4.0F, -8.0F, -4.0F, 8.0F, 8.0F, 8.0F), PartPose.offset(0.0F, 0.0F, 0.0F));
+        mesh.getRoot().addOrReplaceChild("clone_body", CubeListBuilder.create().texOffs(0, 0).addBox(-4.0F, 0.0F, -2.0F, 8.0F, 12.0F, 4.0F), PartPose.offset(0.0F, 0.0F, 0.0F));
+        mesh.getRoot().addOrReplaceChild("clone_arm", CubeListBuilder.create().texOffs(0, 0).addBox(-2.0F, -2.0F, -2.0F, 4.0F, 12.0F, 4.0F), PartPose.offset(0.0F, 0.0F, 0.0F));
+        mesh.getRoot().addOrReplaceChild("clone_leg", CubeListBuilder.create().texOffs(0, 0).addBox(-2.0F, 0.0F, -2.0F, 4.0F, 12.0F, 4.0F), PartPose.offset(0.0F, 0.0F, 0.0F));
         return LayerDefinition.create(mesh, 64, 64);
     }
 
@@ -59,6 +67,24 @@ public class ProjectileRenderer extends EntityRenderer<FruitProjectile> {
         pose.pushPose();
         pose.translate(0.0F, 0.25F * scale, 0.0F);
         switch (kind) {
+            case LIGHT_CLONE -> {
+                // a glowing double, drawn upright facing where the owner looks
+                pose.translate(0.0F, -0.25F * scale, 0.0F);
+                pose.mulPose(Axis.YP.rotationDegrees(180.0F - p.getYRot()));
+                pose.scale(-1.0F, -1.0F, 1.0F);
+                pose.translate(0.0F, -1.5F, 0.0F);
+                var glow = buffer.getBuffer(RenderType.entityTranslucentEmissive(TEX));
+                int gold = FastColor.ARGB32.color(190, 255, 230, 120);
+                int core = FastColor.ARGB32.color(255, 255, 250, 200);
+                float sway = (float) Math.sin(t * 0.12F) * 0.15F;
+                pose.pushPose(); pose.translate(0.0F, 0.0F, 0.0F); this.cloneHead.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, gold); pose.popPose();
+                this.cloneBody.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, gold);
+                pose.pushPose(); pose.translate(-0.375F, 0.125F, 0.0F); pose.mulPose(Axis.XP.rotation(-0.4F + sway)); this.cloneArm.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, gold); pose.popPose();
+                pose.pushPose(); pose.translate(0.375F, 0.125F, 0.0F); pose.mulPose(Axis.XP.rotation(-0.4F - sway)); this.cloneArm.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, gold); pose.popPose();
+                pose.pushPose(); pose.translate(-0.125F, 0.75F, 0.0F); this.cloneLeg.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, gold); pose.popPose();
+                pose.pushPose(); pose.translate(0.125F, 0.75F, 0.0F); this.cloneLeg.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, gold); pose.popPose();
+                pose.pushPose(); pose.scale(0.6F, 0.6F, 0.6F); pose.translate(0.0F, 0.5F, 0.0F); this.cloneBody.render(pose, glow, 0xF000F0, OverlayTexture.NO_OVERLAY, core); pose.popPose();
+            }
             case KAIFU -> {
                 pose.mulPose(Axis.YP.rotationDegrees(p.getYRot()));
                 pose.mulPose(Axis.XP.rotationDegrees(-p.getXRot()));

@@ -86,6 +86,17 @@ public class FormLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<Abs
         float t = ageInTicks;
 
         switch (v.form()) {
+            case "gear_second" -> {
+                // the blood runs hot: a red flush over the skin and steam rising off it
+                VertexConsumer glow = buf.getBuffer(RenderType.entityTranslucentEmissive(TEX));
+                int red = FastColor.ARGB32.color(70, 255, 70, 90);
+                shell(ps, glow, light, m.body, this.bodyShell, 0.88F, red);
+                shell(ps, glow, light, m.rightArm, this.armShell, 0.8F, red);
+                shell(ps, glow, light, m.leftArm, this.armShell, 0.8F, red);
+                shell(ps, glow, light, m.rightLeg, this.legShell, 0.88F, red);
+                shell(ps, glow, light, m.leftLeg, this.legShell, 0.88F, red);
+                steamRing(ps, buf, m, t, 0.7F);
+            }
             case "gear_third" -> {
                 // bone balloon: one giant fist (the arm the player favours) and a swollen other hand
                 fistOn(ps, solid, light, m.rightArm, 1.0F, 0xFFFFFFFF);

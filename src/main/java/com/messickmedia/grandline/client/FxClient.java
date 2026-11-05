@@ -85,6 +85,25 @@ public final class FxClient {
     private static final List<Ribbon> RIBBONS = new ArrayList<>();
     private static final List<Cube> CUBES = new ArrayList<>();
 
+    /** A stretched limb of a player: drawn with that player's skin from the shoulder (or hip) to the target. */
+    static final class Limb {
+        int owner, limb, style;
+        Vec3 to;
+        float thick, life, age;
+    }
+
+    private static final List<Limb> LIMBS = new ArrayList<>();
+
+    public static void stretch(com.messickmedia.grandline.net.ModNetwork.Stretch s) {
+        Limb k = new Limb();
+        k.owner = s.entityId(); k.limb = s.limb(); k.style = s.style();
+        k.to = new Vec3(s.x(), s.y(), s.z());
+        k.thick = s.thick(); k.life = Math.max(3, s.life());
+        LIMBS.add(k);
+        // the fist lands: a burst at the far end
+        impact(s.style() == Fx.HAKI ? Fx.HAKI : s.style() == Fx.NIKA ? Fx.NIKA : s.style() == Fx.FIRE ? Fx.FIRE : Fx.STEAM, k.to);
+    }
+
     public static float[] rgb(int c) {
         return new float[]{((c >> 16) & 255) / 255f, ((c >> 8) & 255) / 255f, (c & 255) / 255f};
     }
@@ -528,6 +547,7 @@ public final class FxClient {
         if (mc.isPaused()) return;
         ClientLevel level = mc.level;
         RIBBONS.removeIf(r -> ++r.age > r.life + r.delay);
+        LIMBS.removeIf(k -> ++k.age > k.life);
         CUBES.removeIf(k -> {
             k.px = k.x; k.py = k.y; k.pz = k.z;
             k.vy -= k.gravity;
@@ -551,11 +571,12 @@ public final class FxClient {
     public static void clear() {
         RIBBONS.clear();
         CUBES.clear();
+        LIMBS.clear();
     }
 
     public static void render(RenderLevelStageEvent e) {
         if (e.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
-        if (RIBBONS.isEmpty() && CUBES.isEmpty()) return;
+        if (RIBBONS.isEmpty() && CUBES.isEmpty() && LIMBS.isEmpty()) return;
         Minecraft mc = Minecraft.getInstance();
         float pt = e.getPartialTick().getGameTimeDeltaPartialTick(false);
         Camera cam = e.getCamera();
@@ -566,6 +587,8 @@ public final class FxClient {
         PoseStack.Pose pose = ps.last();
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         ClientLevel level = mc.level;
+
+        for (Limb k : LIMBS) drawLimb(buffers, pose, k, pt, level);
 
         // solid bodies first (rubber limbs, fists, balloons)
         RenderType solidType = RenderType.entityTranslucentCull(CUBE_TEX);
@@ -585,6 +608,104 @@ public final class FxClient {
         for (Cube k : CUBES) if (k.glow) drawCube(glow, null, pose, k, pt, 0);
         buffers.endBatch(FxRenderTypes.GLOW);
         ps.popPose();
+    }
+
+    // ------------------------------------------------------------------ stretched limbs
+
+    /** Skin texture rects (64x64) per limb: [right, front, left, back, bottom] as u,v of the top-left corner; width in px. */
+    private static int[][] limbUv(int limb, boolean slim) {
+        int w = (limb < 2 && slim) ? 3 : 4;
+        return switch (limb) {
+            case 0 -> new int[][]{{40, 20}, {44, 20}, {44 + w, 20}, {48 + w, 20}, {44 + w, 16}, {w, 12}};
+            case 1 -> new int[][]{{32, 52}, {36, 52}, {36 + w, 52}, {40 + w, 52}, {36 + w, 48}, {w, 12}};
+            case 2 -> new int[][]{{0, 20}, {4, 20}, {8, 20}, {12, 20}, {8, 16}, {4, 12}};
+            default -> new int[][]{{16, 52}, {20, 52}, {24, 52}, {28, 52}, {24, 48}, {4, 12}};
+        };
+    }
+
+    private static void drawLimb(MultiBufferSource.BufferSource buffers, PoseStack.Pose pose, Limb k, float pt, ClientLevel level) {
+        if (level == null) return;
+        net.minecraft.world.entity.Entity e = level.getEntity(k.owner);
+        if (!(e instanceof net.minecraft.client.player.AbstractClientPlayer p)) return;
+        net.minecraft.client.resources.PlayerSkin skin = p.getSkin();
+        boolean slim = skin.model() == net.minecraft.client.resources.PlayerSkin.Model.SLIM;
+        float sc = p.getScale();
+        float yaw = Mth.rotLerp(pt, p.yBodyRotO, p.yBodyRot) * Mth.DEG_TO_RAD;
+        Vec3 right = new Vec3(-Math.cos(yaw), 0, -Math.sin(yaw));
+        Vec3 base = new Vec3(Mth.lerp(pt, p.xo, p.getX()), Mth.lerp(pt, p.yo, p.getY()), Mth.lerp(pt, p.zo, p.getZ()));
+        boolean arm = k.limb < 2;
+        double side = (k.limb % 2 == 0 ? 1 : -1) * (arm ? 0.3125 : 0.125) * sc;
+        Vec3 from = base.add(0, (arm ? 1.4 : 0.75) * sc, 0).add(right.scale(side));
+        // extend over the first ticks, hold, then snap back
+        float a = k.age + pt;
+        float out = Math.min(1f, a / 2f);
+        float back = a > k.life - 3 ? Math.max(0f, (k.life - a) / 3f) : 1f;
+        float ext = out * back;
+        if (ext <= 0.02f) return;
+        Vec3 d = k.to.subtract(from);
+        double len = d.length() * ext;
+        if (len < 0.05) return;
+        d = d.normalize();
+        Vec3 up = Math.abs(d.y) > 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);
+        Vec3 s1 = d.cross(up).normalize();      // "right" of the limb
+        Vec3 s2 = s1.cross(d).normalize();      // "front" of the limb
+        float w = k.thick * sc;
+        int[][] uv = limbUv(k.limb, slim);
+        int wpx = uv[5][0], hpx = uv[5][1];
+        float r = 1f, g = 1f, b = 1f;
+        if (k.style == Fx.HAKI) { r = 0.12f; g = 0.12f; b = 0.14f; }
+        else if (k.style == Fx.NIKA) { r = 1f; g = 1f; b = 1f; }
+        else if (k.style == Fx.FIRE) { r = 0.3f; g = 0.2f; b = 0.2f; }
+        int light = LevelRenderer.getLightColor(level, BlockPos.containing(from.x, from.y, from.z));
+        VertexConsumer vc = buffers.getBuffer(RenderType.entityCutoutNoCull(skin.texture()));
+        Vec3 end = from.add(d.scale(len));
+        // four side faces of the stretched limb
+        Vec3[] corners = {s1.scale(w).add(s2.scale(w)), s1.scale(-w).add(s2.scale(w)), s1.scale(-w).add(s2.scale(-w)), s1.scale(w).add(s2.scale(-w))};
+        int[] faceOrder = {1, 2, 3, 0}; // front, left, back, right
+        for (int f = 0; f < 4; f++) {
+            Vec3 c0 = corners[f], c1 = corners[(f + 1) % 4];
+            int[] tex = uv[faceOrder[f]];
+            float u0 = tex[0] / 64f, u1 = (tex[0] + wpx) / 64f, v0 = tex[1] / 64f, v1 = (tex[1] + hpx) / 64f;
+            Vec3 n = c0.add(c1).normalize();
+            quad(vc, pose, from.add(c0), from.add(c1), end.add(c1), end.add(c0), u0, v0, u1, v1, n, light, r, g, b);
+        }
+        // the fist: a cube at the end wearing the hand texture
+        float fw = w * (k.style == Fx.HAKI || k.style == Fx.NIKA ? 1.6f : 1.35f);
+        Vec3 fc = end.add(d.scale(fw * 0.6));
+        int[] hand = uv[4];
+        float hu0 = hand[0] / 64f, hu1 = (hand[0] + wpx) / 64f, hv0 = hand[1] / 64f, hv1 = (hand[1] + 4) / 64f;
+        Vec3[] fcs = {s1.scale(fw).add(s2.scale(fw)), s1.scale(-fw).add(s2.scale(fw)), s1.scale(-fw).add(s2.scale(-fw)), s1.scale(fw).add(s2.scale(-fw))};
+        Vec3 fa = fc.subtract(d.scale(fw)), fb = fc.add(d.scale(fw));
+        for (int f = 0; f < 4; f++) {
+            Vec3 c0 = fcs[f], c1 = fcs[(f + 1) % 4];
+            int[] tex = uv[faceOrder[f]];
+            float u0 = tex[0] / 64f, u1 = (tex[0] + wpx) / 64f, v0 = (tex[1] + hpx - 4) / 64f, v1 = (tex[1] + hpx) / 64f;
+            quad(vc, pose, fa.add(c0), fa.add(c1), fb.add(c1), fb.add(c0), u0, v0, u1, v1, c0.add(c1).normalize(), light, r, g, b);
+        }
+        quad(vc, pose, fb.add(fcs[0]), fb.add(fcs[1]), fb.add(fcs[2]), fb.add(fcs[3]), hu0, hv0, hu1, hv1, d, light, r, g, b);
+        quad(vc, pose, fa.add(fcs[3]), fa.add(fcs[2]), fa.add(fcs[1]), fa.add(fcs[0]), hu0, hv0, hu1, hv1, d.scale(-1), light, r, g, b);
+        buffers.endBatch(RenderType.entityCutoutNoCull(skin.texture()));
+        // dressing along the limb
+        if (k.age < 1 && pt < 0.5f) {
+            List<Vec3> pts = new ArrayList<>();
+            for (int i = 0; i <= 8; i++) pts.add(from.lerp(k.to, i / 8.0));
+            if (k.style == Fx.HAKI) for (int i = 0; i < 4; i++) { Vec3 q = pts.get(R.nextInt(pts.size())); boltLine(q, q.add(rnd(-0.6, 0.6), rnd(-0.5, 0.6), rnd(-0.6, 0.6)), 0xFF2A3A, i, 0.03); }
+            if (k.style == Fx.FIRE) streak(pts, w * 2.2, 0xFF5A1F, 0xFFD36A, k.life, 2, 0.6f, 0.6f, 0, true, false, 3);
+            if (k.style == Fx.NIKA) streak(pts, w * 2.0, 0xFFFFFF, 0xFFF7D6, k.life, 2, 0.6f, 0.4f, 0, false, false, 2);
+        }
+    }
+
+    private static void quad(VertexConsumer vc, PoseStack.Pose pose, Vec3 a, Vec3 b, Vec3 c, Vec3 d, float u0, float v0, float u1, float v1,
+                             Vec3 n, int light, float r, float g, float bl) {
+        vtxT(vc, pose, a, u0, v0, n, light, r, g, bl);
+        vtxT(vc, pose, b, u1, v0, n, light, r, g, bl);
+        vtxT(vc, pose, c, u1, v1, n, light, r, g, bl);
+        vtxT(vc, pose, d, u0, v1, n, light, r, g, bl);
+    }
+
+    private static void vtxT(VertexConsumer vc, PoseStack.Pose pose, Vec3 p, float u, float v, Vec3 n, int light, float r, float g, float b) {
+        vc.addVertex(pose, (float) p.x, (float) p.y, (float) p.z).setColor(r, g, b, 1f).setUv(u, v)
+                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(light).setNormal(pose, (float) n.x, (float) n.y, (float) n.z);
     }
 
     private static void drawRibbon(VertexConsumer vc, PoseStack.Pose pose, Ribbon r, float pt) {

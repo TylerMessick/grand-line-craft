@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Move registry and the use pipeline: fruit, sea weakness, exhaustion, tier, cooldown, stamina, then the effect. */
@@ -46,13 +47,15 @@ public final class Moves {
     }
 
     public static Move resolve(Pirate s, int slot) {
-        if (!s.hasFruit() || slot < 0 || slot >= 6) return null;
-        return s.formInfo().moves().get(slot);
+        if (!s.hasFruit() || slot < 0 || slot >= 12) return null;
+        List<Move> moves = s.formInfo().moves();
+        return slot < moves.size() ? moves.get(slot) : null;
     }
 
-    public static void use(ServerPlayer p, int slot) {
+    public static void use(ServerPlayer p, int key) {
         Pirate s = Gx.data(p);
         if (!s.hasFruit() || p.isSpectator()) return;
+        int slot = Math.floorMod(s.page, s.pages()) * 6 + key;
         Move m = resolve(s, slot);
         if (m == null) return;
         if (Systems.isWeak(p, s)) {
