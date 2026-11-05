@@ -55,10 +55,12 @@ def build():
         h = s / 2
         z0 = -seg_len / 2 if i == 0 else 0
         part.box((-h, -h, z0), (s, s, seg_len), 'scales')
-        part.box((-h + 1.5, h - 1.2, z0 + 0.5), (s - 3, 2, seg_len - 1), 'belly', 0.3)
-        # dorsal fin: two short plates, the second a little lower, so the ridge ripples along the back
-        part.box((-0.5, -h - 3.5, z0 + 1), (1, 4, 3), 'fin')
-        part.box((-0.5, -h - 2.5, z0 + 5), (1, 3, 3), 'fin')
+        # belly scutes: a cream band wrapping the lower half of the segment, split into two plates
+        part.box((-h, 0, z0 + 0.5), (s, h, seg_len / 2 - 0.8), 'belly', 0.35)
+        part.box((-h, 0, z0 + seg_len / 2 + 0.3), (s, h, seg_len / 2 - 0.8), 'belly', 0.35)
+        # dorsal fin: a spaced plate per segment, stepped so it reads as a pointed fin
+        part.box((-0.5, -h - 5, z0 + 2), (1, 5.5, 2.5), 'fin')
+        part.box((-0.5, -h - 3, z0 + 1), (1, 3.5, 4.5), 'fin')
         z = seg_len / 2 if i == 0 else seg_len
         prev = part
     # ---- tail: ten tapering segments and a flame-like tuft
@@ -68,16 +70,17 @@ def build():
         h = s / 2
         ln = 7
         part.box((-h, -h, 0), (s, s, ln), 'scales')
-        part.box((-h + 1, h - 1, 0.5), (s - 2, 1.5, ln - 1), 'belly', 0.2)
-        part.box((-0.5, -h - 3, 1), (1, 3.5, 3), 'fin')
-        if i % 2 == 0:
-            part.box((-0.5, -h - 2, 4.5), (1, 2.5, 2), 'fin')
+        part.box((-h, 0, 0.5), (s, h, ln - 1), 'belly', 0.25)
+        part.box((-0.5, -h - 4, 2), (1, 4.5, 2), 'fin')
+        part.box((-0.5, -h - 2.5, 1), (1, 3, 4), 'fin')
         z = ln
         prev = part
     tuft = prev.child(Part('tail_tuft', (0, 0, z)))
-    tuft.box((-0.5, -7, -1), (1, 14, 8), 'fin')
-    tuft.box((-5, -0.5, -1), (10, 1, 7), 'fin')
-    tuft.box((-0.5, -3, 6), (1, 6, 4), 'fin')
+    # tail fins: a tall vertical fin and two side fins, like the reference's blue tail plates
+    tuft.box((-0.5, -9, -2), (1, 12, 9), 'fin')
+    tuft.box((-0.5, -4, 6), (1, 7, 5), 'fin')
+    tuft.box((-7, -0.5, -1), (7, 1, 8), 'fin')
+    tuft.box((0, -0.5, -1), (7, 1, 8), 'fin')
     # ---- neck: three segments running forward (-z), with a crest of mane spines
     neck_sizes = [10.5, 10, 9.5]
     prev = chest
@@ -87,11 +90,12 @@ def build():
         h = s / 2
         ln = 9
         part.box((-h, -h, -ln), (s, s, ln), 'scales')
-        part.box((-h + 1.5, h - 1.2, -ln + 0.5), (s - 3, 2, ln - 1), 'belly', 0.3)
+        part.box((-h, 0, -ln + 0.5), (s, h, ln - 1), 'belly', 0.3)
         for k in range(3):
-            part.box((-0.5, -h - 5 + (k % 2), -ln + 1 + k * 2.6), (1, 5.5, 1.6), 'mane')
-        part.box((-h - 0.6, -1, -ln + 2), (0.6, 4, ln - 4), 'mane')      # side mane fringes
-        part.box((h, -1, -ln + 2), (0.6, 4, ln - 4), 'mane')
+            part.box((-0.5, -h - 6 + (k % 2), -ln + 1 + k * 2.6), (1, 6.5, 1.8), 'mane')
+        if i < 2:
+            part.box((-h - 1.5, -h + 1, -ln + 1), (1.5, 6, ln - 2), 'mane')      # mane spilling down the sides
+            part.box((h, -h + 1, -ln + 1), (1.5, 6, ln - 2), 'mane')
         z = -ln
         prev = part
     # ---- head: big, long-snouted, fanged
@@ -101,15 +105,17 @@ def build():
     head.box((-4, -6.5, -26), (8, 1.5, 7), 'scales')                 # nose ridge
     head.box((-5, -7, -27.5), (2.5, 1.5, 2.5), 'dark')               # nostrils
     head.box((2.5, -7, -27.5), (2.5, 1.5, 2.5), 'dark')
-    head.box((-5.5, 2, -26.5), (11, 1.8, 12), 'teeth')               # upper fangs
+    head.box((-5.6, 2.2, -26.6), (11.2, 2.6, 12.5), 'teeth')             # upper fangs
     head.box((-8.5, -10.5, -13.5), (6, 2, 8), 'scales')              # brow ridges
     head.box((2.5, -10.5, -13.5), (6, 2, 8), 'scales')
     head.box((-8.5, -7.5, -12.5), (1, 3, 4), 'eye')                  # eyes
     head.box((7.5, -7.5, -12.5), (1, 3, 4), 'eye')
-    head.box((-8.6, -3, -9), (0.6, 7, 7), 'mane')                    # cheek mane
-    head.box((8, -3, -9), (0.6, 7, 7), 'mane')
+    head.box((-10, -8, -8), (2, 12, 8), 'mane')                       # mane framing the skull
+    head.box((8, -8, -8), (2, 12, 8), 'mane')
+    head.box((-9, -12, -8), (18, 4, 7), 'mane')                       # mane over the crown
+    head.box((-9, 2, -8), (18, 3, 6), 'mane')                         # mane under the jawline
     for k in range(4):
-        head.box((-0.5, -15 + (k % 2), -12 + k * 2.6), (1, 6, 1.6), 'mane')   # crest spines
+        head.box((-0.5, -16 + (k % 2), -12 + k * 2.6), (1, 6, 1.8), 'mane')   # crest spines
     head.box((-12, 0.5, -25), (8, 1, 1), 'whisker')                  # whiskers
     head.box((4, 0.5, -25), (8, 1, 1), 'whisker')
     head.box((-13, -3, -24), (1, 4.5, 1), 'whisker')
@@ -124,11 +130,12 @@ def build():
         horn.box((-0.5, -13, -7), (1, 4, 1), 'horn')
         horn2 = head.child(Part(f'horn2_{"l" if side > 0 else "r"}', (side * 2, -9, -9), (-0.55, 0, side * 0.2)))
         horn2.box((-0.5, -7, -0.5), (1, 7, 1), 'horn')
-    jaw = head.child(Part('jaw', (0, 3, -13)))
+    jaw = head.child(Part('jaw', (0, 3, -13), (0.35, 0, 0)))
     jaw.box((-5.5, 0, -13.5), (11, 3.5, 13), 'scales')
-    jaw.box((-5, -1.5, -13), (10, 1.8, 11), 'teeth')                 # lower fangs
-    jaw.box((-3.5, 3.5, -12), (7, 5, 2), 'mane')                     # beard
-    jaw.box((-1, 3.5, -7), (2, 8, 4), 'mane')
+    jaw.box((-5.2, -2.4, -13.2), (10.4, 2.6, 11.5), 'teeth')             # lower fangs
+    jaw.box((-4, 3.5, -12), (8, 5, 2), 'mane')                       # beard
+    jaw.box((-2, 3.5, -8), (4, 9, 5), 'mane')
+    jaw.box((-6, 3.5, -4), (12, 4, 3), 'mane')
     # ---- legs: four small clawed arms
     for name, parent, px, pz in (('leg_fl', chest, 5.5, -2), ('leg_fr', chest, -5.5, -2), ('leg_bl', prev_body(root, 4), 4.5, 4), ('leg_br', prev_body(root, 4), -4.5, 4)):
         side = 1 if px > 0 else -1
@@ -140,8 +147,7 @@ def build():
         foot = low.child(Part(name + '_foot', (0, 6, 0)))
         foot.box((-2.5, 0, -3), (5, 1.8, 5), 'scales')
         for k, cx in enumerate((-2.6, -0.6, 1.4)):
-            foot.box((cx, -0.4, -6), (1.2, 1.8, 3.5), 'claw')
-        foot.box((-0.6, -0.4, 1.2), (1.2, 1.8, 2.2), 'claw')          # dew claw
+            foot.box((cx, -0.4, -7.5), (1.2, 1.6, 5), 'claw')
     return root
 
 
@@ -253,8 +259,8 @@ def paint_face(img, x0, y0, w, h, paint, face):
             elif paint == 'teeth' or paint == 'claw':
                 base, deep = rgb(0xFFFBF0), rgb(0xD2C7B0)
                 c = base
-                if paint == 'teeth' and x % 2 == 1:
-                    c = deep                         # the gaps between fangs
+                if paint == 'teeth' and x % 3 == 2:
+                    c = rgb(0x5A1E2A)                # the dark gaps between fangs
                 if paint == 'claw' and y > h - 2:
                     c = deep
             elif paint == 'eye':
