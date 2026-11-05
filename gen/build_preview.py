@@ -51,7 +51,7 @@ const MODELS = __MODELS__;
 const TEX = __TEX__;
 
 const scenes = [
-  { id: 'fruits', label: 'Devil fruits', title: 'The three fruits', desc: 'The exact item models the mod ships: voxel spheres with raised swirl ridges, stems and leaves. Gomu Gomu (purple), Pika Pika (gold, crown of light), Uo Uo: Seiryu (azure, dragon scales, horns).' },
+  { id: 'fruits', label: 'Devil fruits', title: 'The three fruits', desc: 'The exact item models the mod ships, at 1/32-block resolution with the swirl and scale art painted in 3D. Gomu Gomu: violet with pale swirls and a curling stem. Pika Pika: a golden bell under sky-blue leaves. Uo Uo: Seiryu: azure dragon scales, two horn stems, orange leaf tuft.' },
   { id: 'dragon', label: 'Azure dragon', title: 'Uo Uo no Mi, Model: Seiryu — full dragon', desc: 'The serpentine model that replaces the player in dragon form: chained body segments undulate, the horned head follows the look, four clawed legs paddle, a mane of spines runs down the back.' },
   { id: 'gear3', label: 'Gear Third', title: 'Gear Third', desc: 'Bone balloon: one giant fist, a swollen off hand.' },
   { id: 'gear4', label: 'Boundman', title: 'Gear Fourth: Boundman', desc: 'Inflated haki shell with flame markings over the torso and arms, haki fists, a ring of steam.' },
@@ -266,9 +266,9 @@ function build(id) {
   camDist = 6; camH = 2.2; target.set(0, 1, 0);
   if (id === 'fruits') {
     const names = ['gomu_gomu', 'pika_pika', 'uo_uo_seiryu'];
-    const items = names.map((n, i) => { const m = itemModel(n); m.position.set((i - 1) * 2.2, 0.9, 0); m.scale.setScalar(1.3); root.add(m); const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.3, 12), new THREE.MeshLambertMaterial({ color: 0x3a4356 })); ped.position.set((i - 1) * 2.2, 0.15, 0); root.add(ped); return m; });
-    anim = (t) => items.forEach((m, i) => { m.rotation.y = t * 0.6 + i; m.position.y = 1.0 + Math.sin(t * 1.5 + i) * 0.08; });
-    camDist = 7; camH = 2.4; target.set(0, 1.2, 0);
+    const items = names.map((n, i) => { const m = itemModel(n); m.position.set((i - 1) * 3.2, 1.3, 0); m.scale.setScalar(2.4); root.add(m); const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.2, 0.3, 12), new THREE.MeshLambertMaterial({ color: 0x3a4356 })); ped.position.set((i - 1) * 3.2, 0.15, 0); root.add(ped); return m; });
+    anim = (t) => items.forEach((m, i) => { m.rotation.y = t * 0.6 + i; m.position.y = 1.4 + Math.sin(t * 1.5 + i) * 0.08; });
+    camDist = 7.5; camH = 2.0; target.set(0, 2.2, 0);
   } else if (id === 'dragon') {
     const d = dragon(); d.scale.setScalar(3.4); d.position.y = 2; root.add(d);
     camDist = 24; camH = 8; target.set(0, 4, 0);
