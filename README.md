@@ -3,8 +3,8 @@
 One Piece devil fruits for Minecraft. Part 1 ships three fruits, each with every ability it shows in the anime:
 the **Gomu Gomu no Mi** (all five Gears, Boundman and Snakeman included), the **Uo Uo no Mi, Model: Seiryu**
 (hybrid and full azure dragon) and the **Pika Pika no Mi** (a true Logia body of light). Every fruit is a real 3D
-item model built from cubes with its own swirl pattern, and every attack is drawn in 3D: stretched rubber limbs,
-haki-black fists, lasers, dragon breath, lightning and voxel clouds.
+item model (1/32-block voxels, swirl and scale art painted in 3D), and every attack is drawn in 3D: the player's own
+skinned arms and legs stretching out, haki-black fists, lasers, dragon breath, lightning and voxel clouds.
 
 ## Build and play
 1. Install **Java 21** (Temurin JDK 21).
@@ -21,7 +21,8 @@ haki-black fists, lasers, dragon breath, lightning and voxel clouds.
 ## Controls (rebind under Options → Controls → Grand Line Craft)
 | Key | Action |
 |---|---|
-| Z R G H J Y | Moves 1–6 of your **current form** |
+| Z R G H J Y | Moves 1–6 of your **current form and page** |
+| U | Flip to the second page of moves (forms with more than six) |
 | V | Shift form: Gears for rubber, Human → Hybrid → Dragon for the zoan, Light → Sun Burst for the logia |
 | B | Fruit toggle: **Light Form** (Pika), **Flame Clouds** (Seiryu) |
 
@@ -43,12 +44,12 @@ Rubber body: immune to lightning and fall damage, blunt hits (unarmed mobs, expl
 
 | Form (V) | Tier | Moves (Z R G H J Y) |
 |---|---|---|
-| Rubber | Rookie | Pistol · Gatling · Bazooka · Whip · Rocket (grapple/launch) · Balloon (reflects projectiles, bounces blunt hits) |
-| Gear Second | Supernova | Jet Pistol · Jet Gatling · Jet Bazooka · Jet Whip · Jet Stamp · **Red Hawk** (haki + fire). Speed, steam, drains stamina; fatigue when it ends |
-| Gear Third | Warlord | Gigant Pistol · Gigant Bazooka · **Elephant Gun** · Gigant Stamp · Elephant Gatling · Grizzly Magnum. Giant fists on the model, slower, armored |
-| Gear Fourth: Boundman | Commander | Kong Gun · Rhino Schneider · Leo Bazooka · Culverin (homing) · Kong Organ · **King Kong Gun**. Haki muscle shell, always bouncing, flight, +20 HP |
+| Rubber | Rookie | Pistol · Gatling · Bazooka · Whip · Rocket (grapple/launch) · Balloon (reflects projectiles, bounces blunt hits) — page 2: Stamp · Spear · Rifle · Bullet · Bell · Storm |
+| Gear Second | Supernova | Jet Pistol · Jet Gatling · Jet Bazooka · Jet Whip · Jet Stamp · **Red Hawk** (haki + fire) — page 2: Jet Spear · Jet Rifle · Jet Bullet · Jet Rocket · Jet Hammer · Jet Cannon. Red flush, steam, speed; fatigue when it ends |
+| Gear Third | Warlord | Gigant Pistol · Gigant Bazooka · **Elephant Gun** · Gigant Stamp · Elephant Gatling · Grizzly Magnum — page 2: Gigant Rifle · Gigant Axe · Gigant Whip · Gigant Jet Shell · Red Roc · Thor Elephant Gun. Giant fists on the model, slower, armored |
+| Gear Fourth: Boundman | Commander | Kong Gun · Rhino Schneider · Leo Bazooka · Culverin (homing) · Kong Organ · **King Kong Gun** — page 2: Double Culverin · Leo Rex Bazooka · Kong Gatling · Tankman Cannonball (swallow a blow, fire the attacker back) · Kong Rifle · Over Kong Gun. Haki muscle shell, always bouncing, flight, +20 HP |
 | Gear Fourth: Snakeman | Commander | Jet Pistol · Jet Culverin · Python · Hydra · Black Mamba · **King Cobra**. Fastest form, every fist homes and curves |
-| Gear Fifth | Emperor | Gigant (grow giant) · Dawn Whip · Dawn Rocket · Fusen · **Rubber World** (everything near you bounces) · **Bajrang Gun**. White glow, cloud wreath, the Drums of Liberation; collapse when it ends |
+| Gear Fifth | Emperor | Gigant (grow giant) · Dawn Whip · Dawn Rocket · Fusen · **Rubber World** (everything near you bounces) · **Bajrang Gun** — page 2: Mogura Pistol (the ground punches from the side) · Star Gun · Dawn Cymbal · Kaminari (throw a lightning bolt) · Dawn Gatling · Dawn Stamp. White glow, cloud wreath, the Drums of Liberation; collapse when it ends |
 
 ## Uo Uo no Mi, Model: Seiryu — Mythical Zoan
 Fire immune, regenerates. Hybrid: +40 HP, armored, 1.5× size, horns, scales and a tail. Dragon: +100 HP, 3.4×
@@ -56,9 +57,9 @@ size, the full serpentine azure dragon model replaces you, you fly on flame clou
 
 | Form (V) | Tier | Moves |
 |---|---|---|
-| Human | Rookie | Raimei Hakke (Thunder Bagua) · Kaifu (wind scythe) · Flame Clouds · Blast Breath · Dragon's Thunder · Tatsumaki |
-| Hybrid Dragon | Supernova | Raimei Hakke · Kaifu · Flame Clouds · **Boro Breath** · Dragon's Thunder · Shoryu: Kaen Hakke |
-| Azure Dragon | Warlord | Boro Breath · Kaifu Storm · Flame Clouds: Lift (raise everything, then drop it) · Bolo Breath · Thunderstorm · **Ragnaraku** |
+| Human | Rookie | Raimei Hakke (Thunder Bagua) · Kaifu (wind scythe) · Flame Clouds · Blast Breath · Dragon's Thunder · Tatsumaki — page 2: Ragnaraku · Raimei Hakke: Leap · Bolo Breath: Scatter |
+| Hybrid Dragon | Supernova | Raimei Hakke · Kaifu · Flame Clouds · **Boro Breath** · Dragon's Thunder · Shoryu: Kaen Hakke — page 2: Tail Swipe · Tail Grab · **Kaen Daiko** (a body of flame for 15 s) · Bolo Scatter · Ragnaraku · Tatsumaki |
+| Azure Dragon | Warlord | Boro Breath · Kaifu Storm · Flame Clouds: Lift (raise everything, then drop it) · Bolo Breath · Thunderstorm · **Ragnaraku** — page 2: Dragon Bite · Tail Swipe · Tatsumaki Kaifu · Kaen Daiko · Bolo Scatter · Claw Swipe |
 
 B: **Flame Clouds** — flight on burning clouds in human and hybrid form.
 
@@ -68,8 +69,8 @@ moves, the Warden, the Wither, the Ender Dragon), the sea and exhaustion can lan
 
 | Form (V) | Tier | Moves |
 |---|---|---|
-| Light | Rookie | Yasakani no Magatama (light bullets) · Ama no Murakumo (light blade: melee burns and cuts for 12 s) · Yata no Kagami (light-speed teleport, behind a target or 48 blocks) · Light Speed Kick · Laser Beam · Blinding Flash |
-| Sun Burst | Warlord | Yasakani Rain (from the sky) · Ama no Murakumo · Yata no Kagami · Light Speed Kick · Laser Volley · **Solar Lance** |
+| Light | Rookie | Yasakani no Magatama (light bullets) · Ama no Murakumo (light blade: melee burns and cuts for 12 s) · Yata no Kagami (light-speed teleport, behind a target or 48 blocks) · Light Speed Kick · Laser Beam · Amaterasu (blinding flash) — page 2: Light Acceleration (melee hits burst into light for 20 s) · Laser Kick · Finger Lasers · **Light Clones** (two glowing doubles that fight for you) · Eye Lasers · Light Hover |
+| Sun Burst | Warlord | Yasakani Rain (from the sky) · Ama no Murakumo · Yata no Kagami · Light Speed Kick · Laser Volley · **Ama no Iwato** (a colossal beam from the feet) — page 2: Sanshu no Jingi (the three treasures combo) · Amaterasu · Light Acceleration · Laser Kick · Light Clones · Finger Lasers |
 
 B: **Light Form** — light-speed flight, glowing, a trail of light.
 
