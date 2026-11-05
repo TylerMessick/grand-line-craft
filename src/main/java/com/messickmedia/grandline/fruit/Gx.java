@@ -74,6 +74,11 @@ public final class Gx {
         return hurt(target, owner, amount);
     }
 
+    public static boolean hurtNow(LivingEntity target, @Nullable Entity direct, @Nullable Entity owner, float amount) {
+        target.invulnerableTime = 0;
+        return hurt(target, direct, owner, amount);
+    }
+
     /** Haki-hardened hit. */
     public static boolean haki(LivingEntity target, @Nullable Entity owner, float amount) {
         target.invulnerableTime = 0;
