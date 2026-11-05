@@ -48,11 +48,12 @@ html = r'''<!doctype html>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const MODELS = __MODELS__;
+__RIG__
 const TEX = __TEX__;
 
 const scenes = [
   { id: 'fruits', label: 'Devil fruits', title: 'The three fruits', desc: 'The exact item models the mod ships, at 1/32-block resolution with the swirl and scale art painted in 3D. Gomu Gomu: violet with pale swirls and a curling stem. Pika Pika: a golden bell under sky-blue leaves. Uo Uo: Seiryu: azure dragon scales, two horn stems, orange leaf tuft.' },
-  { id: 'dragon', label: 'Azure dragon', title: 'Uo Uo no Mi, Model: Seiryu — full dragon', desc: 'The serpentine model that replaces the player in dragon form: chained body segments undulate, the horned head follows the look, four clawed legs paddle, a mane of spines runs down the back.' },
+  { id: 'dragon', label: 'Azure dragon', title: 'Uo Uo no Mi, Model: Seiryu — full dragon', desc: 'The model that replaces the player in dragon form, built and textured by gen/gen_dragon.py: a fanged, antlered head with whiskers and a dark mane, a long slim body of azure scales over cream belly scutes, a rippling dorsal fin, four small clawed arms and a flame-tuft tail. Drag to orbit.' },
   { id: 'gear3', label: 'Gear Third', title: 'Gear Third', desc: 'Bone balloon: one giant fist, a swollen off hand.' },
   { id: 'gear4', label: 'Boundman', title: 'Gear Fourth: Boundman', desc: 'Inflated haki shell with flame markings over the torso and arms, haki fists, a ring of steam.' },
   { id: 'gear5', label: 'Gear Fifth', title: 'Gear Fifth', desc: 'White glow over the whole body and a wreath of clouds that drifts around the neck.' },
@@ -212,51 +213,62 @@ function figure(opts) {
   return g;
 }
 
-// ---- the dragon rig (mirrors client/DragonModel)
-function dragon() {
-  const T = textures.dragon;
-  const g = new THREE.Group();
-  const seg = (parent, size, spine) => {
-    const h = size / 2;
-    cube(parent, T, -h, -h, 0, size, size, size, 128, 128, 0, 0);
-    cube(parent, T, -h + 1, -h - 0.4, 0.5, size - 2, 1.5, size - 1, 128, 128, 64, 0);
-    cube(parent, T, -1, h, 1, 2, 3, Math.max(2, size - 3), 128, 128, 96, 32);
-  };
-  const b0 = pivot(g, 0, 14, 0); seg(b0, 10);
-  const b1 = pivot(b0, 0, 0, 10); seg(b1, 10);
-  const b2 = pivot(b1, 0, 0, 10); seg(b2, 10);
-  const b3 = pivot(b2, 0, 0, 10); seg(b3, 9);
-  const t0 = pivot(b3, 0, 0, 9); seg(t0, 7);
-  const sizes = [6, 5, 4, 3]; let prev = t0; const tails = [t0];
-  for (let i = 1; i < 5; i++) { const t = pivot(prev, 0, 0, sizes[i - 1] + 1); seg(t, sizes[i - 1]); if (i === 4) cube(t, T, -0.5, 2, 4, 1, 10, 6, 128, 128, 96, 32); tails.push(t); prev = t; }
-  const neck = (parent, z) => { const n = pivot(parent, 0, 0, z); const h = 4; cube(n, T, -h, -h, -8, 8, 8, 8, 128, 128, 0, 0); cube(n, T, -1, 4, -8, 2, 4, 8, 128, 128, 96, 32); return n; };
-  const n1 = neck(b0, 0); n1.position.y = 1 / 16; const n2 = neck(n1, -8); const n3 = neck(n2, -8);
-  const head = pivot(n3, 0, 0, -8);
-  cube(head, T, -6, -4, -10, 12, 10, 12, 128, 128, 0, 0);
-  cube(head, T, -4, -2, -18, 8, 5, 8, 128, 128, 0, 0);
-  cube(head, T, -5.5, 5, -4, 2, 9, 2, 128, 128, 64, 32); cube(head, T, 3.5, 5, -4, 2, 9, 2, 128, 128, 64, 32);
-  cube(head, T, -5, 13, -2, 1, 5, 1, 128, 128, 64, 32); cube(head, T, 4, 13, -2, 1, 5, 1, 128, 128, 64, 32);
-  cube(head, T, -6.5, 2, -8, 1, 2, 2, 128, 128, 64, 48); cube(head, T, 5.5, 2, -8, 1, 2, 2, 128, 128, 64, 48);
-  cube(head, T, -1, 6, -2, 2, 3, 10, 128, 128, 96, 32);
-  cube(head, T, -9, 0, -17, 5, 1, 1, 128, 128, 64, 32); cube(head, T, 4, 0, -17, 5, 1, 1, 128, 128, 64, 32);
-  const jaw = pivot(head, 0, -2, -9); cube(jaw, T, -3.5, -2, -8, 7, 2, 9, 128, 128, 0, 0);
-  const leg = (parent, x, z) => { const l = pivot(parent, x, -3, z); cube(l, T, -2, -9, -2, 4, 9, 4, 128, 128, 0, 0); for (const cx of [-2.5, -0.5, 1.5]) cube(l, T, cx, -10, -4, 1, 2, 3, 128, 128, 64, 32); l.rotation.x = -0.6; return l; };
-  const legs = [leg(b0, 5, -3), leg(b0, -5, -3), leg(b2, 5, 3), leg(b2, -5, 3)];
-  g.userData = { body: [b0, b1, b2, b3], tails, neck: [n1, n2, n3], head, jaw, legs };
-  return g;
-}
-
-// ---- a stretched limb in the player's skin colours (the mod draws the real skin texture)
-function skinArm(a, b, half, color) {
-  const d = new THREE.Vector3().subVectors(b, a); const len = d.length();
-  const geo = new THREE.BoxGeometry(half * 2, half * 2, len);
-  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color }));
-  m.position.copy(a).add(d.clone().multiplyScalar(0.5));
-  m.lookAt(b);
+// ---- the dragon rig: built from the generated DRAGON_RIG exactly like the game's LayerDefinition
+function rigBox(b, tex) {
+  const [w, h, d] = b.s; const [u, v] = b.uv; const inf = b.inf || 0;
+  const geo = new THREE.BoxGeometry(w / 16 + inf / 8, h / 16 + inf / 8, d / 16 + inf / 8);
+  const W = Math.ceil(w), H = Math.ceil(h), D = Math.ceil(d), S = 256;
+  // three face order: +x, -x, +y, -y, +z, -z  →  Minecraft regions: east, west, bottom(+y, model down), top(-y), south, north
+  const regions = [[u + D + W, v + D, D, H], [u, v + D, D, H], [u + D + W, v, W, D], [u + D, v, W, D], [u + 2 * D + W, v + D, W, H], [u + D, v + D, W, H]];
+  const uv = geo.attributes.uv;
+  regions.forEach(([x, y, rw, rh], i) => {
+    const u0 = x / S, u1 = (x + rw) / S, v0 = 1 - y / S, v1 = 1 - (y + rh) / S;
+    const b0 = i * 4; uv.setXY(b0, u0, v0); uv.setXY(b0 + 1, u1, v0); uv.setXY(b0 + 2, u0, v1); uv.setXY(b0 + 3, u1, v1);
+  });
+  uv.needsUpdate = true;
+  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5 }));
+  m.position.set((b.o[0] + w / 2) / 16, (b.o[1] + h / 2) / 16, (b.o[2] + d / 2) / 16);
   return m;
 }
-function fistCube(p, half, color) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(half * 2, half * 2, half * 1.8), new THREE.MeshLambertMaterial({ color })); m.position.copy(p); return m;
+function rigNode(n, tex, parts) {
+  const g = new THREE.Group();
+  g.position.set(n.pivot[0] / 16, n.pivot[1] / 16, n.pivot[2] / 16);
+  g.rotation.order = 'ZYX';
+  g.rotation.set(n.rot[0], n.rot[1], n.rot[2]);
+  g.userData.base = [n.rot[0], n.rot[1], n.rot[2]];
+  for (const b of n.boxes) g.add(rigBox(b, tex));
+  for (const c of n.children) g.add(rigNode(c, tex, parts));
+  parts[n.name] = g;
+  return g;
+}
+function dragon() {
+  const parts = {};
+  const inner = new THREE.Group();
+  for (const n of DRAGON_RIG) inner.add(rigNode(n, textures.dragon, parts));
+  inner.scale.set(-1, -1, 1);          // Minecraft model space: y down, z forward
+  inner.position.set(0, 1.5, 0);
+  const g = new THREE.Group(); g.add(inner);
+  const names = (p) => Object.keys(parts).filter(k => k.startsWith(p)).sort().map(k => parts[k]);
+  g.userData = { parts, body: names('body'), tails: names('tail').filter(t => t !== parts.tail_tuft), neck: names('neck'), head: parts.head, jaw: parts.jaw,
+    legs: [parts.leg_fl, parts.leg_fr, parts.leg_bl, parts.leg_br], lows: [parts.leg_fl_low, parts.leg_fr_low, parts.leg_bl_low, parts.leg_br_low], tuft: parts.tail_tuft };
+  g.userData.reset = () => { for (const k in parts) { const b = parts[k].userData.base; parts[k].rotation.set(b[0], b[1], b[2]); } };
+  return g;
+}
+function animateDragon(d, t, flying, speed) {
+  const u = d.userData; u.reset();
+  const w = t * 2.2, amp = 0.09 + Math.min(0.14, speed * 0.5);
+  u.body.forEach((b, i) => { b.rotation.x += Math.cos(w * 0.9 - i * 0.65) * amp * 0.45; b.rotation.y += Math.sin(w - i * 0.65) * amp; });
+  u.tails.forEach((b, i) => { b.rotation.x += Math.cos(w * 0.9 - (5 + i) * 0.65) * amp * 0.55; b.rotation.y += Math.sin(w - (5 + i) * 0.65) * (amp + 0.04); });
+  u.tuft.rotation.x += Math.sin(t * 5) * 0.3; u.tuft.rotation.y += Math.cos(t * 4) * 0.25;
+  const bob = Math.sin(t * 1.4) * 0.05;
+  u.neck[0].rotation.x += -0.12 + bob; u.neck[0].rotation.y += Math.sin(w + 0.7) * amp * 0.6;
+  u.neck[1].rotation.x += -0.08 + bob; u.neck[1].rotation.y += Math.sin(w + 1.3) * amp * 0.4;
+  u.neck[2].rotation.x += 0.15; u.head.rotation.x += 0.05;
+  u.jaw.rotation.x += 0.12 + 0.1 * Math.sin(t * 1.8) + (flying ? 0.08 : 0);
+  const stroke = flying ? Math.sin(t * 3.6) * 0.55 : Math.sin(t * 10) * Math.min(1, speed * 3) * 0.8;
+  u.legs[0].rotation.x += -0.4 + stroke; u.legs[1].rotation.x += -0.4 - stroke; u.legs[2].rotation.x += -0.3 - stroke; u.legs[3].rotation.x += -0.3 + stroke;
+  const curl = 0.6 + 0.3 * Math.sin(t * 3.6 + 1); u.lows.forEach(l => l.rotation.x += curl);
+  ['leg_fl_foot', 'leg_fr_foot', 'leg_bl_foot', 'leg_br_foot'].forEach(k => u.parts[k].rotation.x += -0.5);
 }
 
 // ---- move primitives (simplified mirrors of FxClient)
@@ -293,14 +305,8 @@ function build(id) {
     camDist = 7.5; camH = 2.0; target.set(0, 2.2, 0);
   } else if (id === 'dragon') {
     const d = dragon(); d.scale.setScalar(3.4); d.position.y = 2; root.add(d);
-    camDist = 24; camH = 8; target.set(0, 4, 0);
-    anim = (t) => { const u = d.userData; const w = t * 2.4, amp = 0.16;
-      u.body.forEach((b, i) => { b.rotation.y = Math.sin(w - i * 0.7) * amp; b.rotation.x = Math.cos(w * 0.9 - i * 0.7) * amp * 0.5; });
-      u.tails.forEach((b, i) => { b.rotation.y = Math.sin(w - (4 + i) * 0.7) * (amp + 0.05); b.rotation.x = Math.cos(w * 0.9 - (4 + i) * 0.7) * amp * 0.6; });
-      u.neck[0].rotation.y = Math.sin(w + 0.7) * amp * 0.6; u.neck[0].rotation.x = 0.15; u.neck[1].rotation.x = 0.05 + Math.sin(t * 1.6) * 0.04; u.neck[2].rotation.x = -0.2;
-      u.jaw.rotation.x = -0.1 - 0.08 * Math.sin(t * 1.4);
-      const p = Math.sin(t * 4) * 0.5; u.legs[0].rotation.x = -0.6 + p; u.legs[1].rotation.x = -0.6 - p; u.legs[2].rotation.x = -0.6 - p; u.legs[3].rotation.x = -0.6 + p;
-      d.position.y = 2 + Math.sin(t) * 0.4; };
+    camDist = 26; camH = 8; target.set(0, 4, 0);
+    anim = (t) => { animateDragon(d, t, true, 0.1); d.position.y = 2 + Math.sin(t) * 0.4; };
   } else if (id === 'gear3' || id === 'gear4' || id === 'gear5' || id === 'hybrid') {
     const opts = { gear3: { fists: 1.0 }, gear4: { fists: 0.7, fistColor: 0x1c1c22, shell: true, shellColor: 0x1c1c22, shellAlpha: 1, steam: true },
       gear5: { shell: true, shellColor: 0xffffff, shellAlpha: 0.35, legs: true, clouds: true }, hybrid: { horns: true } }[id];
@@ -329,13 +335,13 @@ function build(id) {
   } else if (id === 'laser' || id === 'boro') {
     const fire = id === 'boro';
     let src;
-    if (fire) { const d = dragon(); d.scale.setScalar(2); d.position.set(0, 1.5, 3); root.add(d); src = new THREE.Vector3(0, 2.9, 3 - 2 * 2.3); }
+    let dr = null; if (fire) { dr = dragon(); dr.scale.setScalar(2); dr.position.set(0, 1.0, 3); root.add(dr); src = new THREE.Vector3(0, 2.6, 3 - 2 * 3.1); }
     else { const f = figure({ shell: true, shellColor: 0xffe24a, shellAlpha: 0.4, legs: true }); root.add(f); f.userData.armR.rotation.x = -Math.PI / 2; src = new THREE.Vector3(-0.35, 1.4, -0.4); }
     const end = new THREE.Vector3(0, 1.2, -14);
     const wall = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 0.5), new THREE.MeshLambertMaterial({ color: 0x4a5566 })); wall.position.set(0, 2, -14.3); root.add(wall);
     camDist = 14; camH = 4; target.set(0, 1.5, -6);
     let parts = [];
-    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const cycle = (t % 2.5) / 2.5; if (cycle > 0.6) return; const k = Math.min(1, cycle / 0.08);
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; if (dr) animateDragon(dr, t, true, 0.05); const cycle = (t % 2.5) / 2.5; if (cycle > 0.6) return; const k = Math.min(1, cycle / 0.08);
       const b = src.clone().lerp(end, k); const col = fire ? 0xff5a1f : 0xffe24a, core = fire ? 0xffd36a : 0xffffff, r = fire ? 0.7 : 0.3;
       parts.push(tube(src, b, r * 1.6, col, 0.35, true), tube(src, b, r * 0.9, core, 0.7, true), tube(src, b, r * 0.35, 0xffffff, 1, true));
       if (fire) for (let i = 0; i < 8; i++) { const p = src.clone().lerp(b, i / 8), q = src.clone().lerp(b, (i + 1) / 8); p.y += Math.sin(i * 0.9 + t * 8) * r * 0.8; q.y += Math.sin((i + 1) * 0.9 + t * 8) * r * 0.8; parts.push(tube(p, q, r * 0.3, 0xff3a00, 0.8, true)); }
@@ -408,8 +414,7 @@ function build(id) {
     const dummies = [[-5, 0, -2], [4, 0, -5], [1, 0, 5]].map(v => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.8, 0.6), new THREE.MeshLambertMaterial({ color: 0x5a6b7c })); m.position.set(v[0], 0.9, v[2]); root.add(m); return m; });
     camDist = 22; camH = 8; target.set(0, 3, 0);
     let parts = [];
-    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; const u = d.userData; const w = t * 2.4;
-      u.body.forEach((b, i) => { b.rotation.y = Math.sin(w - i * 0.7) * 0.16; }); u.tails.forEach((b, i) => { b.rotation.y = Math.sin(w - (4 + i) * 0.7) * 0.2; });
+    anim = (t) => { parts.forEach(p => root.remove(p)); parts = []; animateDragon(d, t, true, 0.1);
       if (id === 'tatsumaki') {
         d.position.y = 3; d.rotation.y = t * 1.5;
         for (let i = 0; i < 6; i++) { const r = 4 + i * 1.1, y = 0.5 + i * 1.3; const g = new THREE.Mesh(new THREE.TorusGeometry(r, 0.12, 6, 40), new THREE.MeshBasicMaterial({ color: 0xbff3ec, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); g.rotation.x = Math.PI / 2; g.position.y = y; g.rotation.z = t * (1 + i * 0.1); parts.push(g); }
@@ -446,7 +451,9 @@ frame();
 </body>
 </html>
 '''
-html = html.replace('__MODELS__', json.dumps(models)).replace('__TEX__', json.dumps(textures))
+with open(os.path.join(ROOT, 'preview', 'dragon.js')) as f:
+    rig_js = f.read()
+html = html.replace('__MODELS__', json.dumps(models)).replace('__TEX__', json.dumps(textures)).replace('__RIG__', rig_js)
 os.makedirs(os.path.join(ROOT, 'preview'), exist_ok=True)
 with open(os.path.join(ROOT, 'preview', 'index.html'), 'w') as f:
     f.write(html)
