@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""Generates every texture and the 3D fruit item models for Grand Line Craft.
+
+Everything is drawn here from palettes and simple procedural patterns (voxel spheres, spirals, scales), so the
+whole look is ours. Run from the repo root: python3 gen/gen_assets.py
+"""
+import json
+import math
+import os
+import random
+
+from PIL import Image, ImageDraw
+
+ROOT = os.path.join(os.path.dirname(__file__), '..', 'src', 'main', 'resources', 'assets', 'grandline')
+TEX = os.path.join(ROOT, 'textures')
+MODELS = os.path.join(ROOT, 'models', 'item')
+random.seed(7)
+
+
+def ensure(path):
+    os.makedirs(path, exist_ok=True)
+
+
+def rgb(h):
+    return ((h >> 16) & 255, (h >> 8) & 255, h & 255, 255)
+
+
+def mix(a, b, t):
+    return tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3)) + (255,)
+
+
+def noise_fill(img, box, base, dark, light, grain=0.18):
+    x0, y0, x1, y1 = box
+    px = img.load()
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            r = random.random()
+            c = base
+            if r < grain:
+                c = dark
+            elif r > 1 - grain * 0.6:
+                c = light
+            px[x, y] = c
+
+
+# ------------------------------------------------------------------ fruit textures + models
+
+def fruit_texture(name, base, dark, light, swirl, size=64, spiral_turns=2.6, scales=False):
+    """A 64x64 sheet: rows 0..47 = body bands (side faces), 48..63 = top/bottom caps and stem/leaf swatches."""
+    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    px = img.load()
+    # body: a horizontal band texture with a diagonal swirl that wraps around the fruit
+    for y in range(0, 48):
+        for x in range(0, size):
+            u = x / size
+            v = y / 48.0
+            # spiral band: phase advances with height so the stripe winds around the body
+            phase = (u * spiral_turns + v * 1.8) % 1.0
+            band = abs(phase - 0.5) < 0.09
+            edge = abs(phase - 0.5) < 0.13 and not band
+            r = random.random()
+            c = base
+            if band:
+                c = swirl
+            elif edge:
+                c = mix(base, swirl, 0.45)
+            elif r < 0.07:
+                c = dark
+            elif r > 0.96:
+                c = light
+            if scales:
+                sx, sy = x % 6, (y + (3 if (x // 6) % 2 else 0)) % 6
+                if sy == 0 or (sx == 0 and sy < 3):
+                    c = dark
+                elif sy == 1:
+                    c = light if not band else swirl
+            px[x, y] = c
+    # caps
+    noise_fill(img, (0, 48, 16, 64), base, dark, light)
+    noise_fill(img, (16, 48, 32, 64), dark, mix(dark, (0, 0, 0, 255), 0.3), base)   # underside
+    # stem (brown-green) and leaf (green)
+    noise_fill(img, (32, 48, 40, 64), (92, 70, 40, 255), (60, 44, 26, 255), (122, 96, 58, 255))
+    noise_fill(img, (40, 48, 48, 64), (74, 140, 52, 255), (46, 96, 34, 255), (120, 190, 80, 255))
+    noise_fill(img, (48, 48, 64, 64), swirl, mix(swirl, dark, 0.4), light)        # ridge swatch
+    ensure(os.path.join(TEX, 'item'))
+    img.save(os.path.join(TEX, 'item', f'{name}.png'))
+
+
+def box(frm, to, faces, rotation=None):
+    e = {'from': frm, 'to': to, 'faces': faces}
+    if rotation:
+        e['rotation'] = rotation
+    return e
+
+
+TEX_SCALE = 4  # 64px textures; Minecraft model UVs run 0..16 across the whole texture
+
+
+def uv_face(tex, u0, v0, u1, v1, rot=0):
+    f = {'uv': [round(u0 / TEX_SCALE, 3), round(v0 / TEX_SCALE, 3), round(u1 / TEX_SCALE, 3), round(v1 / TEX_SCALE, 3)], 'texture': tex}
+    if rot:
+        f['rotation'] = rot
+    return f
+
+
+def sphere_slabs(cx, cy, cz, rx, ry, rz, layers, tex_body, tex_top, tex_bot, squash=1.0):
+    """A voxel sphere made of stacked square slabs, each one element. Side faces sample successive bands."""
+    elements = []
+    for i in range(layers):
+        t0 = -1 + 2 * i / layers
+        t1 = -1 + 2 * (i + 1) / layers
+        tm = (t0 + t1) / 2
+        w = math.sqrt(max(0.0, 1 - tm * tm))
+        hx, hz = rx * w, rz * w
+        y0, y1 = cy + ry * t0, cy + ry * t1
+        if hx < 0.4:
+            continue
+        v0 = 48 * i / layers
+        v1 = 48 * (i + 1) / layers
+        faces = {}
+        for k, d in enumerate(['north', 'east', 'south', 'west']):
+            u0 = (k * 16) % 64
+            faces[d] = uv_face(tex_body, u0, v0, u0 + 16 * squash, v1)
+        faces['up'] = uv_face(tex_top, 0, 48, 16, 64)
+        faces['down'] = uv_face(tex_bot, 16, 48, 32, 64)
+        elements.append(box([round(cx - hx, 3), round(y0, 3), round(cz - hz, 3)],
+                            [round(cx + hx, 3), round(y1, 3), round(cz + hz, 3)], faces))
+    return elements
+
+
+def swatch_box(frm, to, u0, v0, u1, v1, tex='#body'):
+    faces = {d: uv_face(tex, u0, v0, u1, v1) for d in ['north', 'east', 'south', 'west', 'up', 'down']}
+    return box(frm, to, faces)
+
+
+def fruit_model(name, elements, gui_rot=(30, 45, 0)):
+    model = {
+        'credit': 'Grand Line Craft devil fruit (generated by gen/gen_assets.py)',
+        'gui_light': 'front',
+        'textures': {'body': f'grandline:item/{name}', 'particle': f'grandline:item/{name}'},
+        'elements': elements,
+        'display': {
+            'gui': {'rotation': list(gui_rot), 'translation': [0, -0.5, 0], 'scale': [0.62, 0.62, 0.62]},
+            'ground': {'translation': [0, 1, 0], 'scale': [0.4, 0.4, 0.4]},
+            'fixed': {'rotation': [0, 0, 0], 'scale': [0.7, 0.7, 0.7]},
+            'thirdperson_righthand': {'rotation': [0, 0, 0], 'translation': [0, 2.5, 1], 'scale': [0.42, 0.42, 0.42]},
+            'thirdperson_lefthand': {'rotation': [0, 0, 0], 'translation': [0, 2.5, 1], 'scale': [0.42, 0.42, 0.42]},
+            'firstperson_righthand': {'rotation': [0, 45, 0], 'translation': [0, 2, 0], 'scale': [0.5, 0.5, 0.5]},
+            'firstperson_lefthand': {'rotation': [0, 225, 0], 'translation': [0, 2, 0], 'scale': [0.5, 0.5, 0.5]},
+            'head': {'translation': [0, 12, 0], 'scale': [0.9, 0.9, 0.9]},
+        },
+    }
+    ensure(MODELS)
+    with open(os.path.join(MODELS, f'{name}.json'), 'w') as f:
+        json.dump(model, f, indent=1)
+
+
+def ridge_spiral(cx, cy, cz, rx, ry, rz, turns, count, size, u0=48, v0=48):
+    """Small raised cubes following a spiral over the surface: the swirl pattern every devil fruit carries."""
+    out = []
+    for i in range(count):
+        t = i / (count - 1)
+        lat = -0.75 + 1.5 * t                 # -1 bottom .. 1 top
+        ang = t * turns * 2 * math.pi
+        w = math.sqrt(max(0.0, 1 - lat * lat))
+        x = cx + rx * w * math.cos(ang)
+        y = cy + ry * lat
+        z = cz + rz * w * math.sin(ang)
+        s = size * (0.7 + 0.3 * w)
+        out.append(swatch_box([round(x - s, 3), round(y - s, 3), round(z - s, 3)],
+                              [round(x + s, 3), round(y + s, 3), round(z + s, 3)], u0, v0, u0 + 8, v0 + 8))
+    return out
+
+
+def stem(cx, top, curl=True):
+    out = [swatch_box([cx - 0.75, top, cx - 0.75], [cx + 0.75, top + 2.2, cx + 0.75], 32, 48, 40, 64)]
+    if curl:
+        out.append(swatch_box([cx - 0.6, top + 1.8, cx - 0.6], [cx + 2.4, top + 3.0, cx + 0.6], 32, 48, 40, 64))
+        out.append(swatch_box([cx + 1.6, top + 2.6, cx - 0.6], [cx + 2.8, top + 4.2, cx + 0.6], 32, 48, 40, 64))
+    return out
+
+
+def leaf(cx, top):
+    return [box([cx - 4.2, top + 1.2, cx - 1.6], [cx - 0.4, top + 1.6, cx + 1.6],
+                {d: uv_face('#body', 40, 48, 48, 64) for d in ['north', 'east', 'south', 'west', 'up', 'down']},
+                rotation={'origin': [cx, top + 1.4, cx], 'axis': 'z', 'angle': 22.5})]
+
+
+def gen_fruits():
+    # Gomu Gomu no Mi: a plump round fruit in deep purple with pale swirl ridges and a curling stem
+    fruit_texture('gomu_gomu', rgb(0x7B2E9E), rgb(0x4E1A6B), rgb(0xA56BCB), rgb(0xE6C8F5), spiral_turns=2.4)
+    el = sphere_slabs(8, 7.5, 8, 6.3, 6.0, 6.3, 12, '#body', '#body', '#body')
+    el += ridge_spiral(8, 7.5, 8, 6.5, 6.1, 6.5, 2.4, 26, 0.55)
+    el += stem(8, 13.4)
+    el += leaf(8, 13.4)
+    fruit_model('gomu_gomu', el)
+
+    # Pika Pika no Mi: a glowing golden fruit, white light-swirls, a crown of light spikes
+    fruit_texture('pika_pika', rgb(0xF2C230), rgb(0xC48A12), rgb(0xFFE88A), rgb(0xFFFBE0), spiral_turns=3.2)
+    el = sphere_slabs(8, 7.2, 8, 6.0, 6.2, 6.0, 12, '#body', '#body', '#body')
+    el += ridge_spiral(8, 7.2, 8, 6.2, 6.3, 6.2, 3.2, 30, 0.5)
+    # crown of light: four thin spikes
+    for ang in range(0, 360, 90):
+        a = math.radians(ang + 45)
+        x, z = 8 + 2.6 * math.cos(a), 8 + 2.6 * math.sin(a)
+        el.append(swatch_box([round(x - 0.5, 2), 12.8, round(z - 0.5, 2)], [round(x + 0.5, 2), 16.0, round(z + 0.5, 2)], 48, 48, 56, 56))
+    el += stem(8, 13.0, curl=False)
+    fruit_model('pika_pika', el)
+
+    # Uo Uo no Mi, Model: Seiryu: a tall azure fruit scaled like a dragon, cream swirl, two horn-like stems
+    fruit_texture('uo_uo_seiryu', rgb(0x2F8FC4), rgb(0x1B5C86), rgb(0x6CC3EA), rgb(0xEAF6FF), spiral_turns=2.0, scales=True)
+    el = sphere_slabs(8, 7.6, 8, 5.4, 7.0, 5.4, 14, '#body', '#body', '#body')
+    el += ridge_spiral(8, 7.6, 8, 5.6, 7.0, 5.6, 2.0, 24, 0.5)
+    # horns
+    for sx in (-1, 1):
+        el.append(box([8 + sx * 2.2 - 0.6, 13.6, 7.4], [8 + sx * 2.2 + 0.6, 16.4, 8.6],
+                      {d: uv_face('#body', 32, 48, 40, 64) for d in ['north', 'east', 'south', 'west', 'up', 'down']},
+                      rotation={'origin': [8 + sx * 2.2, 13.6, 8], 'axis': 'z', 'angle': -22.5 * sx}))
+    el += stem(8, 14.2, curl=False)
+    fruit_model('uo_uo_seiryu', el)
+
+
+# ------------------------------------------------------------------ entity / fx textures
+
+def gen_forms():
+    img = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
+    noise_fill(img, (0, 0, 64, 32), rgb(0xE8A77A), rgb(0xC98B60), rgb(0xF6D2B4))        # skin
+    noise_fill(img, (0, 32, 64, 64), rgb(0x1C1C22), rgb(0x0E0E12), rgb(0x2E2E36))        # haki
+    # tribal flame pattern over the haki region (Gear Fourth's markings)
+    d = ImageDraw.Draw(img)
+    for i in range(7):
+        x = 4 + i * 9
+        pts = [(x, 62), (x + 3, 50 - (i % 3) * 4), (x + 6, 56), (x + 8, 44 - (i % 2) * 5), (x + 9, 62)]
+        d.line(pts, fill=rgb(0x8A1F2A), width=1)
+    noise_fill(img, (64, 0, 128, 32), rgb(0xFFFFFF), rgb(0xECECEC), rgb(0xFFFFFF))      # white cloud
+    noise_fill(img, (64, 32, 128, 64), rgb(0x3FA7D6), rgb(0x256F94), rgb(0x8ED6F2))     # azure
+    for y in range(32, 64):
+        for x in range(64, 128):
+            if (y % 5 == 0) or ((x + (y // 5) * 3) % 5 == 0 and y % 5 < 2):
+                img.putpixel((x, y), rgb(0x256F94))
+    noise_fill(img, (0, 64, 64, 96), rgb(0xEDE3C8), rgb(0xC9BC9A), rgb(0xFFFBEE))       # ivory
+    noise_fill(img, (64, 64, 128, 96), rgb(0xFFE24A), rgb(0xF2C230), rgb(0xFFFBE0))     # gold
+    noise_fill(img, (0, 96, 64, 128), rgb(0xF4EAD2), rgb(0xD8CBAA), rgb(0xFFFFFF))      # cream spines
+    noise_fill(img, (64, 96, 128, 128), rgb(0xE6EEF3), rgb(0xD0DAE0), rgb(0xFFFFFF))    # steam
+    ensure(os.path.join(TEX, 'entity'))
+    img.save(os.path.join(TEX, 'entity', 'forms.png'))
+
+
+def gen_dragon():
+    img = Image.new('RGBA', (128, 128), (0, 0, 0, 0))
+    noise_fill(img, (0, 0, 64, 64), rgb(0x3FA7D6), rgb(0x256F94), rgb(0x8ED6F2))
+    for y in range(0, 64):
+        for x in range(0, 64):
+            sx, sy = x % 6, (y + (3 if (x // 6) % 2 else 0)) % 6
+            if sy == 0 or (sx == 0 and sy < 3):
+                img.putpixel((x, y), rgb(0x1E5F86))
+            elif sy == 1 and sx > 1:
+                img.putpixel((x, y), rgb(0x6FC4E8))
+    noise_fill(img, (64, 0, 128, 32), rgb(0xEAD9B5), rgb(0xC9B48C), rgb(0xFFF4DC))      # belly
+    for y in range(0, 32, 3):
+        for x in range(64, 128):
+            img.putpixel((x, y), rgb(0xC9B48C))
+    noise_fill(img, (64, 32, 96, 48), rgb(0xEDE3C8), rgb(0xBDAE86), rgb(0xFFFBEE))      # horn ivory
+    noise_fill(img, (96, 32, 128, 64), rgb(0x173E6B), rgb(0x0E2A4A), rgb(0x2B5C8E))     # dark mane
+    noise_fill(img, (64, 48, 96, 64), rgb(0xFF3A2A), rgb(0xB01C12), rgb(0xFFA070))      # eye
+    ensure(os.path.join(TEX, 'entity'))
+    img.save(os.path.join(TEX, 'entity', 'seiryu_dragon.png'))
+
+
+def gen_projectile():
+    img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+    noise_fill(img, (0, 0, 16, 16), rgb(0xFFFFFF), rgb(0xFFF4C0), rgb(0xFFFFFF))        # core
+    noise_fill(img, (16, 0, 48, 16), rgb(0xFFE24A), rgb(0xF2C230), rgb(0xFFF4A0))       # shell
+    noise_fill(img, (0, 16, 28, 32), rgb(0xFFFFFF), rgb(0xE6E6E6), rgb(0xFFFFFF))        # fist (tinted at render)
+    noise_fill(img, (28, 16, 64, 32), rgb(0xFFFFFF), rgb(0xDDDDDD), rgb(0xFFFFFF))       # knuckles
+    noise_fill(img, (0, 48, 64, 64), rgb(0xDFFFF6), rgb(0xBFF3EC), rgb(0xFFFFFF))        # wind blade
+    ensure(os.path.join(TEX, 'entity'))
+    img.save(os.path.join(TEX, 'entity', 'projectile.png'))
+
+
+def gen_fx():
+    ensure(os.path.join(TEX, 'fx'))
+    img = Image.new('RGBA', (16, 16), (255, 255, 255, 255))
+    px = img.load()
+    for y in range(16):
+        for x in range(16):
+            v = 236 + random.randint(0, 19)
+            if x == 0 or y == 0 or x == 15 or y == 15:
+                v -= 18
+            px[x, y] = (v, v, v, 255)
+    img.save(os.path.join(TEX, 'fx', 'cube.png'))
+    ensure(os.path.join(TEX, 'particle'))
+    g = Image.new('RGBA', (8, 8), (0, 0, 0, 0))
+    for y in range(8):
+        for x in range(8):
+            d = math.hypot(x - 3.5, y - 3.5) / 3.9
+            a = max(0, 1 - d * d)
+            g.putpixel((x, y), (255, 255, 255, int(255 * min(1, a * 1.3))))
+    g.save(os.path.join(TEX, 'particle', 'glow.png'))
+
+
+if __name__ == '__main__':
+    gen_fruits()
+    gen_forms()
+    gen_dragon()
+    gen_projectile()
+    gen_fx()
+    print('assets written')
